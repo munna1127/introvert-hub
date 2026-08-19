@@ -8,6 +8,7 @@ let matchDeck = [];
 let currentDeckIndex = 0;
 let lastMatchedUser = '';
 let checkTimer = null;
+let activeResetToken = null;
 
 function switchTab(tab) {
   ['match', 'inbox', 'signals'].forEach(t => {
@@ -25,7 +26,11 @@ function switchTab(tab) {
 function toggleAuthMode() {
   isLoginMode = !isLoginMode;
   document.getElementById('signupFields').style.display = isLoginMode ? 'none' : 'block';
+  document.getElementById('forgotPassLink').style.display = isLoginMode ? 'block' : 'none';
   document.getElementById('authSubmitBtn').innerText = isLoginMode ? 'Sign In' : 'Enter Lounge';
+  document.getElementById('authToggleText').innerHTML = isLoginMode
+    ? 'Need an anonymous handle? <b class="text-indigo-400">Join here</b>'
+    : 'Already a member? <b class="text-indigo-400">Log In</b>';
 }
 
 function checkUsernameLive(val) {
@@ -54,6 +59,59 @@ function checkUsernameLive(val) {
       msg.classList.add('hidden');
     }
   }, 300);
+}
+
+// Password Recovery Handlers
+function openForgotModal() {
+  document.getElementById('forgotModal').classList.remove('hidden');
+  document.getElementById('forgotStep1').classList.remove('hidden');
+  document.getElementById('forgotStep2').classList.add('hidden');
+}
+
+function closeForgotModal() {
+  document.getElementById('forgotModal').classList.add('hidden');
+}
+
+async function requestResetCode() {
+  const email = document.getElementById('forgotEmail').value.trim();
+  if (!email) return alert('Please enter your email.');
+
+  try {
+    const res = await fetch('/api/auth/forgot-password', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.msg || 'Verification failed');
+
+    activeResetToken = data.resetToken;
+    document.getElementById('forgotStep1').classList.add('hidden');
+    document.getElementById('forgotStep2').classList.remove('hidden');
+  } catch (err) {
+    alert(err.message);
+  }
+}
+
+async function submitNewPassword() {
+  const email = document.getElementById('forgotEmail').value.trim();
+  const newPassword = document.getElementById('newPassword').value.trim();
+  if (!newPassword) return alert('Please enter a new password.');
+
+  try {
+    const res = await fetch('/api/auth/reset-password', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, resetToken: activeResetToken, newPassword })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.msg || 'Reset failed');
+
+    alert(data.msg);
+    closeForgotModal();
+  } catch (err) {
+    alert(err.message);
+  }
 }
 
 async function handleAuth() {
@@ -99,7 +157,6 @@ function initView() {
     socket.emit('join_user', currentHandle);
     socket.emit('join_group', 'grp_general');
 
-    // Purge self from DM history if previously saved
     let dms = JSON.parse(localStorage.getItem('saved_dms') || '[]');
     dms = dms.filter(u => u !== currentHandle);
     localStorage.setItem('saved_dms', JSON.stringify(dms));
@@ -168,7 +225,6 @@ async function fetchMatches() {
       headers: { 'Authorization': `Bearer ${authToken}` }
     });
     const data = await res.json();
-    // Exclude self strictly
     matchDeck = data.filter(u => u.username !== currentHandle);
     currentDeckIndex = 0;
     renderCurrentCard();
@@ -239,7 +295,7 @@ function openMatchedChat() {
 
 function saveDM(username) {
   const clean = username.replace('@', '').trim();
-  if (clean === currentHandle) return; // Prevent self
+  if (clean === currentHandle) return;
 
   let dms = JSON.parse(localStorage.getItem('saved_dms') || '[]');
   if (!dms.includes(clean)) {
@@ -266,7 +322,7 @@ function loadConversations() {
 
 async function openChat(target) {
   const cleanTarget = target.replace('@', '').trim();
-  if (cleanTarget === currentHandle) return; // Prevent self chat
+  if (cleanTarget === currentHandle) return;
 
   activeTarget = cleanTarget;
   document.getElementById('activeChatTitle').innerText = activeTarget.startsWith('grp_') ? '🌐 Lounge Squad' : `@${activeTarget}`;
@@ -346,7 +402,7 @@ function appendChatMessage(sender, text, isSelf) {
   container.scrollTop = container.scrollHeight;
 }
 
-// Signals Post System - Do not show DM button for self posts
+// Signals Post
 async function fetchPosts() {
   const res = await fetch('/api/posts');
   const posts = await res.json();

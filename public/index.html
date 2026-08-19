@@ -64,6 +64,10 @@
         <input id="authEmail" type="email" placeholder="Email address" class="w-full glass-input px-4 py-3 rounded-2xl text-xs outline-none">
         <input id="authPass" type="password" placeholder="Password" class="w-full glass-input px-4 py-3 rounded-2xl text-xs outline-none">
         
+        <div id="forgotPassLink" class="text-right hidden">
+          <button onclick="openForgotModal()" class="text-[11px] text-indigo-400 hover:underline">Forgot Password?</button>
+        </div>
+
         <button id="authSubmitBtn" onclick="handleAuth()" class="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-semibold py-3 rounded-2xl text-xs shadow-lg transition">Enter Lounge</button>
 
         <p class="text-center text-xs text-slate-400 pt-2 cursor-pointer select-none" onclick="toggleAuthMode()">
@@ -74,8 +78,6 @@
 
     <!-- App View -->
     <div id="appSection" class="hidden space-y-4">
-
-      <!-- Navigation Tabs -->
       <div class="flex items-center justify-around glass-card p-1 rounded-2xl">
         <button onclick="switchTab('match')" id="tabMatch" class="flex-1 py-2 text-xs font-bold rounded-xl bg-indigo-600 text-white transition">🔥 Match Deck</button>
         <button onclick="switchTab('inbox')" id="tabInbox" class="flex-1 py-2 text-xs font-bold rounded-xl text-slate-400 transition">💬 Chats & DMs</button>
@@ -127,7 +129,6 @@
         </div>
         <div id="postsFeed" class="space-y-3"></div>
       </div>
-
     </div>
 
     <!-- Match Popup Modal -->
@@ -175,6 +176,30 @@
         </div>
 
         <button onclick="saveProfileChanges()" class="w-full bg-indigo-600 py-2.5 rounded-xl text-xs font-bold mt-2">Save Changes</button>
+      </div>
+    </div>
+
+    <!-- Password Reset Modal -->
+    <div id="forgotModal" class="fixed inset-0 bg-black/80 backdrop-blur-md z-50 hidden flex items-center justify-center p-4">
+      <div class="glass-card p-6 rounded-3xl max-w-xs w-full space-y-3 border border-indigo-500/20">
+        <div class="flex justify-between items-center pb-2 border-b border-white/5">
+          <h3 class="text-sm font-bold">Account Recovery</h3>
+          <button onclick="closeForgotModal()" class="text-slate-400 text-xs">✕</button>
+        </div>
+
+        <!-- Step 1: Request Code -->
+        <div id="forgotStep1" class="space-y-2">
+          <p class="text-[11px] text-slate-400">Enter your registered email to verify account.</p>
+          <input id="forgotEmail" type="email" placeholder="Registered email" class="w-full glass-input px-3 py-2 rounded-xl text-xs outline-none">
+          <button onclick="requestResetCode()" class="w-full bg-indigo-600 py-2 rounded-xl text-xs font-bold mt-2">Verify Account</button>
+        </div>
+
+        <!-- Step 2: Enter New Password -->
+        <div id="forgotStep2" class="space-y-2 hidden">
+          <p class="text-[11px] text-emerald-400">Account verified! Set your new password.</p>
+          <input id="newPassword" type="password" placeholder="New strong password" class="w-full glass-input px-3 py-2 rounded-xl text-xs outline-none">
+          <button onclick="submitNewPassword()" class="w-full bg-emerald-600 hover:bg-emerald-500 py-2 rounded-xl text-xs font-bold mt-2">Update Password</button>
+        </div>
       </div>
     </div>
 

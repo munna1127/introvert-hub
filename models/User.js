@@ -7,7 +7,9 @@ const schema = new mongoose.Schema({
   interest: { type: String, default: 'Gym' },
   location: { type: String, default: 'Online' },
   battery: { type: String, default: '🔋 Energized' },
-  bio: { type: String, default: 'Looking for low-friction quiet connection.' }
+  bio: { type: String, default: 'Looking for low-friction quiet connection.' },
+  resetToken: { type: String, default: null },
+  resetTokenExpires: { type: Date, default: null }
 }, { timestamps: true });
 
 module.exports = mongoose.model('User', schema);
