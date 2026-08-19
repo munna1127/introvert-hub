@@ -1,34 +1,36 @@
 const express = require('express');
 const router = express.Router();
 const Post = require('../models/Post');
-const authMiddleware = require('../middleware/auth');
+const auth = require('../middleware/auth');
 
-// Saare posts fetch karne ke liye (Public)
 router.get('/', async (req, res) => {
   try {
-    const posts = await Post.find().sort({ createdAt: -1 });
-    res.json(posts);
+    const list = await Post.find().sort({ createdAt: -1 }).limit(50);
+    res.json(list);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ msg: 'Failed to fetch posts' });
   }
 });
 
-// Naya activity request post karne ke liye (Protected)
-router.post('/create', authMiddleware, async (req, res) => {
+router.post('/create', auth, async (req, res) => {
   try {
-    const { category, title, description, locationOrPlatform, authorName } = req.body;
-    const newPost = new Post({
-      author: req.user.userId,
-      authorName,
+    const { title, description, category } = req.body;
+    if (!title || !description || !category) {
+      return res.status(400).json({ msg: 'Missing parameters' });
+    }
+
+    const post = new Post({
+      author: req.user.id,
+      authorName: req.user.username,
       category,
       title,
-      description,
-      locationOrPlatform
+      description
     });
-    await newPost.save();
-    res.status(201).json({ message: 'Post created successfully!', post: newPost });
+
+    await post.save();
+    res.status(201).json(post);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ msg: 'Failed to create post' });
   }
 });
 
