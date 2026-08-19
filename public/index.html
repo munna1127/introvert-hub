@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" data-theme="midnight">
+<html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
@@ -7,171 +7,147 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="/socket.io/socket.io.js"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-  
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <style>
-    * { font-family: 'Inter', sans-serif; -webkit-tap-highlight-color: transparent; }
-
-    html[data-theme="midnight"] {
-      --bg: #030712;
-      --card-bg: rgba(17, 24, 39, 0.75);
-      --card-border: rgba(255, 255, 255, 0.08);
-      --card-hover: rgba(255, 255, 255, 0.15);
-      --input-bg: rgba(15, 23, 42, 0.85);
-      --primary: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
-      --accent: #818cf8;
-      --text: #f8fafc;
-      --text-muted: #94a3b8;
-      --glow: rgba(99, 102, 241, 0.18);
-    }
-
-    body { background-color: var(--bg); color: var(--text); }
-    .theme-card { background: var(--card-bg); border: 1px solid var(--card-border); backdrop-filter: blur(20px); }
-    .theme-input { background: var(--input-bg); border: 1px solid var(--card-border); color: var(--text); }
-    .theme-input:focus { border-color: var(--accent); }
-    .theme-btn { background: var(--primary); color: #ffffff; }
+    * { font-family: 'Plus Jakarta Sans', sans-serif; -webkit-tap-highlight-color: transparent; }
+    body { background: #07090e; color: #f8fafc; }
+    .glass-card { background: rgba(18, 24, 38, 0.85); backdrop-filter: blur(20px); border: 1px solid rgba(255, 255, 255, 0.08); }
+    .glass-input { background: rgba(11, 15, 25, 0.7); border: 1px solid rgba(255, 255, 255, 0.1); color: #fff; }
     .custom-scroll::-webkit-scrollbar { width: 3px; }
-    .custom-scroll::-webkit-scrollbar-thumb { background: var(--card-border); border-radius: 10px; }
+    .custom-scroll::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 10px; }
+    .card-swipe-anim { transition: transform 0.3s ease, opacity 0.3s ease; }
   </style>
 </head>
-<body class="min-h-screen antialiased selection:bg-indigo-500 selection:text-white pb-24">
+<body class="min-h-screen antialiased selection:bg-indigo-500 pb-20">
 
   <!-- Header -->
-  <header class="sticky top-0 z-50 theme-card border-b border-white/5 px-4 py-3">
-    <div class="max-w-4xl mx-auto flex items-center justify-between">
+  <header class="sticky top-0 z-50 glass-card border-b border-white/5 px-4 py-3">
+    <div class="max-w-md mx-auto flex items-center justify-between">
       <div class="flex items-center gap-2.5">
-        <div class="w-8 h-8 rounded-xl theme-btn flex items-center justify-center font-bold text-sm shadow-md">L</div>
+        <div class="w-8 h-8 rounded-xl bg-gradient-to-tr from-indigo-500 to-violet-500 flex items-center justify-center font-bold text-sm text-white shadow-lg">L</div>
         <div>
-          <span class="font-bold text-sm tracking-tight block leading-none">Lounge</span>
-          <span class="text-[10px] text-slate-400 font-medium">Silent Sync & Quiet Matches</span>
+          <span class="font-bold text-sm tracking-tight block">Lounge</span>
+          <span class="text-[10px] text-slate-400">Silent Sync Radar</span>
         </div>
       </div>
-
       <div id="navUser" class="hidden items-center gap-2">
-        <span id="userBadge" class="text-xs px-2.5 py-1 rounded-full bg-white/5 border border-white/10 text-indigo-300 font-medium"></span>
-        <button onclick="logout()" class="text-xs text-rose-400 hover:bg-rose-500/10 px-2 py-1 rounded-lg transition">Exit</button>
+        <span id="userBadge" class="text-xs px-3 py-1 rounded-full bg-white/5 border border-white/10 text-indigo-300 font-bold"></span>
+        <button onclick="logout()" class="text-xs text-rose-400 hover:bg-rose-500/10 px-2 py-1 rounded-lg">Exit</button>
       </div>
     </div>
   </header>
 
-  <main class="max-w-4xl mx-auto px-4 mt-6">
+  <main class="max-w-md mx-auto px-4 mt-4">
 
-    <!-- Auth Container -->
-    <div id="authSection" class="max-w-sm mx-auto theme-card p-6 rounded-3xl shadow-2xl mt-8">
+    <!-- Auth Form -->
+    <div id="authSection" class="glass-card p-6 rounded-3xl shadow-2xl mt-8">
       <div class="text-center mb-6">
-        <h2 class="text-lg font-bold tracking-tight">Enter Your Space</h2>
-        <p class="text-xs text-slate-400 mt-1">Zero small talk. Real anonymous connection.</p>
+        <h2 class="text-xl font-bold tracking-tight">Enter Your Space</h2>
+        <p class="text-xs text-slate-400 mt-1">Anonymous, low-energy connections</p>
       </div>
 
       <div class="space-y-3">
         <div id="signupFields" class="space-y-3">
-          <input id="authUsername" type="text" placeholder="Anonymous alias (@zen_sync)" class="w-full theme-input px-4 py-3 rounded-2xl text-xs outline-none">
+          <input id="authUsername" type="text" placeholder="Anonymous alias (@zen_sync)" class="w-full glass-input px-4 py-3 rounded-2xl text-xs outline-none">
           <div class="grid grid-cols-2 gap-2">
-            <select id="authInterest" class="theme-input px-3 py-2.5 rounded-xl text-xs outline-none">
+            <select id="authInterest" class="glass-input px-3 py-2.5 rounded-xl text-xs outline-none">
               <option value="Gym">💪 Gym Partner</option>
               <option value="Coding">💻 Study / Code</option>
-              <option value="Gaming">🎮 Silent Gaming</option>
-              <option value="Coffee">☕ Quiet Coffee</option>
+              <option value="Gaming">🎮 Gaming</option>
+              <option value="Coffee">☕ Chill / Coffee</option>
             </select>
-            <input id="authLocation" type="text" placeholder="City (e.g., Delhi)" class="theme-input px-3 py-2.5 rounded-xl text-xs outline-none">
+            <input id="authLocation" type="text" placeholder="City (e.g. Bhopal)" class="glass-input px-3 py-2.5 rounded-xl text-xs outline-none">
           </div>
         </div>
-        <input id="authEmail" type="email" placeholder="Email address" class="w-full theme-input px-4 py-3 rounded-2xl text-xs outline-none">
-        <input id="authPass" type="password" placeholder="Password" class="w-full theme-input px-4 py-3 rounded-2xl text-xs outline-none">
+        <input id="authEmail" type="email" placeholder="Email" class="w-full glass-input px-4 py-3 rounded-2xl text-xs outline-none">
+        <input id="authPass" type="password" placeholder="Password" class="w-full glass-input px-4 py-3 rounded-2xl text-xs outline-none">
         
-        <button id="authSubmitBtn" onclick="handleAuth()" class="w-full theme-btn font-semibold py-3 rounded-2xl text-xs shadow-lg transition active:scale-95">Enter Lounge</button>
+        <button id="authSubmitBtn" onclick="handleAuth()" class="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-semibold py-3 rounded-2xl text-xs shadow-lg transition">Enter Lounge</button>
 
         <p class="text-center text-xs text-slate-400 pt-2 cursor-pointer select-none" onclick="toggleAuthMode()">
-          <span id="authToggleText">Already a member? <b class="text-indigo-400 hover:underline">Log in</b></span>
+          <span id="authToggleText">Already a member? <b class="text-indigo-400">Log In</b></span>
         </p>
       </div>
     </div>
 
-    <!-- Main Workspace with Tabs -->
-    <div id="appSection" class="hidden space-y-6">
+    <!-- App View -->
+    <div id="appSection" class="hidden space-y-4">
 
       <!-- Navigation Tabs -->
-      <div class="flex items-center justify-around bg-slate-900/80 border border-white/10 p-1.5 rounded-2xl max-w-md mx-auto">
-        <button onclick="switchTab('match')" id="tabMatch" class="flex-1 py-2 text-xs font-semibold rounded-xl bg-indigo-600 text-white transition">🔥 Sync Match</button>
-        <button onclick="switchTab('signals')" id="tabSignals" class="flex-1 py-2 text-xs font-semibold rounded-xl text-slate-400 transition">📡 Signals</button>
-        <button onclick="switchTab('inbox')" id="tabInbox" class="flex-1 py-2 text-xs font-semibold rounded-xl text-slate-400 transition">💬 Inbox & Squads</button>
+      <div class="flex items-center justify-around glass-card p-1 rounded-2xl">
+        <button onclick="switchTab('match')" id="tabMatch" class="flex-1 py-2 text-xs font-bold rounded-xl bg-indigo-600 text-white transition">🔥 Match Deck</button>
+        <button onclick="switchTab('inbox')" id="tabInbox" class="flex-1 py-2 text-xs font-bold rounded-xl text-slate-400 transition">💬 Chats & DMs</button>
+        <button onclick="switchTab('signals')" id="tabSignals" class="flex-1 py-2 text-xs font-bold rounded-xl text-slate-400 transition">📡 Signals</button>
       </div>
 
-      <!-- TAB 1: SYNC MATCH (Tinder-style Deck for Introverts) -->
+      <!-- TAB 1: TINDER-STYLE CARD STACK -->
       <div id="viewMatch" class="space-y-4">
-        <div class="text-center max-w-sm mx-auto">
-          <h3 class="text-sm font-bold">Quiet Match Radar</h3>
-          <p class="text-xs text-slate-400">People with matching silent energy near your frequency</p>
+        <div id="cardStackContainer" class="relative h-[430px] flex items-center justify-center">
+          <!-- Active Swipe Card will inject here -->
         </div>
-        <div id="matchCardDeck" class="max-w-sm mx-auto space-y-4"></div>
+
+        <!-- Action Controls -->
+        <div class="flex items-center justify-center gap-6 pt-2">
+          <button onclick="swipeAction('pass')" class="w-14 h-14 rounded-full glass-card border border-rose-500/30 text-rose-400 flex items-center justify-center text-xl shadow-lg hover:scale-110 active:scale-95 transition">✕</button>
+          <button onclick="swipeAction('match')" class="w-16 h-16 rounded-full bg-gradient-to-tr from-indigo-500 to-violet-500 text-white flex items-center justify-center text-2xl shadow-lg shadow-indigo-500/30 hover:scale-110 active:scale-95 transition">⚡</button>
+        </div>
       </div>
 
-      <!-- TAB 2: SIGNALS & POSTS -->
-      <div id="viewSignals" class="hidden space-y-6">
-        <div class="theme-card p-5 rounded-3xl">
-          <h3 class="text-xs font-bold uppercase tracking-wider text-slate-300 mb-3">Broadcast Silent Activity</h3>
-          <div class="space-y-3">
-            <input id="postTitle" placeholder="Title (e.g. 7 AM Silent leg day, zero talks)" class="w-full theme-input px-4 py-2.5 rounded-xl text-xs outline-none">
-            <textarea id="postDesc" rows="2" placeholder="Silent rules & details..." class="w-full theme-input px-4 py-2.5 rounded-xl text-xs outline-none resize-none"></textarea>
-            <div class="flex justify-end">
-              <button onclick="submitPost()" class="theme-btn px-5 py-2 rounded-xl text-xs font-semibold">Broadcast</button>
+      <!-- TAB 2: INBOX & DMs -->
+      <div id="viewInbox" class="hidden space-y-4">
+        <!-- Direct Chats Bar -->
+        <div class="glass-card p-3 rounded-2xl">
+          <span class="text-[10px] uppercase font-bold text-slate-500 block mb-2">Conversations</span>
+          <div id="dmConversationList" class="flex gap-2 overflow-x-auto custom-scroll pb-1">
+            <!-- DMs pills -->
+          </div>
+        </div>
+
+        <!-- Chat Container -->
+        <div class="glass-card p-4 rounded-3xl flex flex-col h-[460px]">
+          <div class="flex items-center justify-between pb-3 border-b border-white/5">
+            <div>
+              <h4 id="activeChatTitle" class="text-xs font-bold text-indigo-300">Select a Chat</h4>
+              <p id="activeChatSub" class="text-[10px] text-slate-400">Silent Sync active</p>
             </div>
+            <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+          </div>
+
+          <div id="chatMessages" class="flex-1 overflow-y-auto custom-scroll py-3 space-y-2 text-xs"></div>
+
+          <div class="flex gap-1.5 pt-2 border-t border-white/5">
+            <input id="chatInput" onkeydown="if(event.key==='Enter') sendDirectMessage()" placeholder="Type softly..." class="flex-1 glass-input px-3.5 py-2.5 rounded-2xl text-xs outline-none">
+            <button onclick="sendDirectMessage()" class="bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2.5 rounded-2xl text-xs font-bold">Send</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- TAB 3: SIGNALS (BROADCAST FEED) -->
+      <div id="viewSignals" class="hidden space-y-4">
+        <div class="glass-card p-4 rounded-2xl space-y-2">
+          <input id="postTitle" placeholder="Signal Title (e.g. 7 AM Silent gym buddy)" class="w-full glass-input px-3 py-2 rounded-xl text-xs outline-none">
+          <textarea id="postDesc" rows="2" placeholder="Silent rules & details..." class="w-full glass-input px-3 py-2 rounded-xl text-xs outline-none resize-none"></textarea>
+          <div class="flex justify-end">
+            <button onclick="submitPost()" class="bg-indigo-600 px-4 py-1.5 rounded-xl text-xs font-bold">Broadcast</button>
           </div>
         </div>
         <div id="postsFeed" class="space-y-3"></div>
       </div>
 
-      <!-- TAB 3: INBOX / PRIVATE DMS & GROUPS -->
-      <div id="viewInbox" class="hidden grid grid-cols-1 md:grid-cols-12 gap-4">
-        
-        <!-- Channels & DM List (4 Cols) -->
-        <div class="md:col-span-4 space-y-3">
-          <div class="theme-card p-3 rounded-2xl">
-            <span class="text-[10px] uppercase font-bold text-slate-500 block mb-2">Squads / Groups</span>
-            <div class="space-y-1">
-              <button onclick="openChat('grp_gym', '💪 Gym Silent Squad', true)" class="w-full text-left p-2 rounded-xl text-xs hover:bg-white/5 transition flex items-center justify-between">
-                <span>💪 Gym Squad</span>
-                <span class="text-[10px] text-emerald-400 font-mono">Live</span>
-              </button>
-              <button onclick="openChat('grp_code', '💻 Late Night Coders', true)" class="w-full text-left p-2 rounded-xl text-xs hover:bg-white/5 transition flex items-center justify-between">
-                <span>💻 Coders Lounge</span>
-                <span class="text-[10px] text-emerald-400 font-mono">Live</span>
-              </button>
-            </div>
-          </div>
-
-          <div class="theme-card p-3 rounded-2xl">
-            <span class="text-[10px] uppercase font-bold text-slate-500 block mb-2">Direct Chats (DMs)</span>
-            <div id="directChatList" class="space-y-1 text-xs text-slate-400">
-              <p class="text-[11px] p-2">Match with someone to unlock direct quiet chat.</p>
-            </div>
-          </div>
-        </div>
-
-        <!-- Active Chat Window (8 Cols) -->
-        <div class="md:col-span-8">
-          <div class="theme-card p-4 rounded-3xl flex flex-col h-[520px]">
-            <div class="flex items-center justify-between pb-3 border-b border-white/5">
-              <div>
-                <h4 id="activeChatTitle" class="text-xs font-bold">Select a Room / DM</h4>
-                <p id="activeChatSub" class="text-[10px] text-slate-400">End-to-end quiet sync</p>
-              </div>
-              <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-            </div>
-
-            <div id="chatMessages" class="flex-1 overflow-y-auto custom-scroll py-3 space-y-2.5 text-xs"></div>
-
-            <div class="flex gap-1.5 pt-2 border-t border-white/5">
-              <input id="chatInput" onkeydown="if(event.key==='Enter') sendDirectMessage()" placeholder="Type softly..." class="flex-1 theme-input px-3.5 py-2.5 rounded-2xl text-xs outline-none">
-              <button onclick="sendDirectMessage()" class="theme-btn px-4 py-2.5 rounded-2xl text-xs font-semibold">Send</button>
-            </div>
-          </div>
-        </div>
-
-      </div>
-
     </div>
+
+    <!-- Match Popup Modal -->
+    <div id="matchPopup" class="fixed inset-0 bg-black/80 backdrop-blur-md z-50 hidden flex items-center justify-center p-4">
+      <div class="glass-card p-6 rounded-3xl max-w-xs w-full text-center space-y-4 border border-indigo-500/30">
+        <div class="w-16 h-16 bg-gradient-to-tr from-indigo-500 to-violet-500 rounded-full mx-auto flex items-center justify-center text-3xl shadow-xl shadow-indigo-500/40 animate-bounce">⚡</div>
+        <div>
+          <h3 class="text-lg font-bold text-white">Silent Match!</h3>
+          <p id="matchPopupText" class="text-xs text-slate-400 mt-1">You and @user are on the same quiet wavelength.</p>
+        </div>
+        <button onclick="openMatchedChat()" class="w-full bg-indigo-600 py-3 rounded-2xl text-xs font-bold">Open Direct DM 👋</button>
+      </div>
+    </div>
+
   </main>
 
   <script src="app.js"></script>
