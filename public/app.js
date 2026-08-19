@@ -14,7 +14,7 @@ let activeResetToken = null;
 let localStream = null;
 let peerConnection = null;
 let incomingSignalData = null;
-let callerUser = null;
+let activeCallPartner = null;
 
 const rtcConfig = {
   iceServers: [
@@ -471,6 +471,8 @@ socket.on('receive_direct_message', (msg) => {
   const cleanRecipient = msg.recipient.replace('@', '').trim();
   const isGroup = activeTarget.startsWith('grp_');
 
+  if (cleanSender === currentHandle && !isGroup) return;
+
   if (isGroup && cleanRecipient === activeTarget) {
     appendChatMessage(cleanSender, msg.text, cleanSender === currentHandle, msg._id);
   } else if (!isGroup) {
@@ -508,109 +510,98 @@ function appendChatMessage(sender, text, isSelf, msgId) {
   container.scrollTop = container.scrollHeight;
 }
 
-// --- WebRTC Peer-to-Peer Voice Engine ---
+// --- Reliable WebRTC Audio Call Engine ---
+function createPeerConnection(targetUser) {
+  peerConnection = new RTCPeerConnection(rtcConfig);
+
+  if (localStream) {
+    localStream.getTracks().forEach(track => peerConnection.addTrack(track, localStream));
+  }
+
+  peerConnection.ontrack = (event) => {
+    const audioEl = document.getElementById('remoteAudio');
+    audioEl.srcObject = event.streams[0];
+    audioEl.play().catch(e => console.log('Audio autoplay allowed', e));
+  };
+
+  peerConnection.onicecandidate = (event) => {
+    if (event.candidate) {
+      socket.emit('ice_candidate', {
+        to: targetUser,
+        candidate: event.candidate
+      });
+    }
+  };
+}
+
 async function initiateVoiceCall() {
   if (activeTarget.startsWith('grp_')) return;
 
   try {
+    activeCallPartner = activeTarget;
     localStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
-    peerConnection = new RTCPeerConnection(rtcConfig);
-
-    localStream.getTracks().forEach(track => peerConnection.addTrack(track, localStream));
-
-    peerConnection.ontrack = (event) => {
-      document.getElementById('remoteAudio').srcObject = event.streams[0];
-    };
-
-    peerConnection.onicecandidate = (event) => {
-      if (event.candidate) {
-        socket.emit('call_user', {
-          userToCall: activeTarget,
-          signalData: { candidate: event.candidate },
-          from: currentHandle
-        });
-      }
-    };
+    createPeerConnection(activeCallPartner);
 
     const offer = await peerConnection.createOffer();
     await peerConnection.setLocalDescription(offer);
 
     socket.emit('call_user', {
-      userToCall: activeTarget,
-      signalData: { sdp: offer },
+      userToCall: activeCallPartner,
+      signalData: offer,
       from: currentHandle
     });
 
-    document.getElementById('callPeerHandle').innerText = `@${activeTarget}`;
+    document.getElementById('callPeerHandle').innerText = `@${activeCallPartner}`;
     document.getElementById('callStatusText').innerText = 'Calling quietly...';
     document.getElementById('acceptCallBtn').classList.add('hidden');
     document.getElementById('callModal').classList.remove('hidden');
   } catch (err) {
-    alert('Microphone access required for voice sync.');
+    alert('Please allow microphone permission to start voice sync.');
   }
 }
 
-socket.on('incoming_call', async (data) => {
-  if (data.signal.sdp) {
-    callerUser = data.from;
-    incomingSignalData = data.signal.sdp;
+socket.on('incoming_call', (data) => {
+  activeCallPartner = data.from;
+  incomingSignalData = data.signal;
 
-    document.getElementById('callPeerHandle').innerText = `@${callerUser}`;
-    document.getElementById('callStatusText').innerText = 'Incoming silent call sync...';
-    document.getElementById('acceptCallBtn').classList.remove('hidden');
-    document.getElementById('callModal').classList.remove('hidden');
-  } else if (data.signal.candidate && peerConnection) {
-    try {
-      await peerConnection.addIceCandidate(new RTCIceCandidate(data.signal.candidate));
-    } catch (e) {
-      console.error(e);
-    }
-  }
+  document.getElementById('callPeerHandle').innerText = `@${activeCallPartner}`;
+  document.getElementById('callStatusText').innerText = 'Incoming silent call sync...';
+  document.getElementById('acceptCallBtn').classList.remove('hidden');
+  document.getElementById('callModal').classList.remove('hidden');
 });
 
 async function acceptIncomingCall() {
   try {
     localStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
-    peerConnection = new RTCPeerConnection(rtcConfig);
-
-    localStream.getTracks().forEach(track => peerConnection.addTrack(track, localStream));
-
-    peerConnection.ontrack = (event) => {
-      document.getElementById('remoteAudio').srcObject = event.streams[0];
-    };
-
-    peerConnection.onicecandidate = (event) => {
-      if (event.candidate) {
-        socket.emit('answer_call', {
-          to: callerUser,
-          signal: { candidate: event.candidate }
-        });
-      }
-    };
+    createPeerConnection(activeCallPartner);
 
     await peerConnection.setRemoteDescription(new RTCSessionDescription(incomingSignalData));
     const answer = await peerConnection.createAnswer();
     await peerConnection.setLocalDescription(answer);
 
     socket.emit('answer_call', {
-      to: callerUser,
-      signal: { sdp: answer }
+      to: activeCallPartner,
+      signal: answer
     });
 
     document.getElementById('acceptCallBtn').classList.add('hidden');
     document.getElementById('callStatusText').innerText = 'Voice connection active 🟢';
   } catch (err) {
-    alert('Could not access microphone.');
+    alert('Microphone access required to answer call.');
   }
 }
 
 socket.on('call_accepted', async (signal) => {
-  if (signal.sdp && peerConnection) {
-    await peerConnection.setRemoteDescription(new RTCSessionDescription(signal.sdp));
+  if (peerConnection) {
+    await peerConnection.setRemoteDescription(new RTCSessionDescription(signal));
     document.getElementById('callStatusText').innerText = 'Voice connection active 🟢';
-  } else if (signal.candidate && peerConnection) {
+  }
+});
+
+socket.on('ice_candidate', async (data) => {
+  if (peerConnection && data.candidate) {
     try {
-      await peerConnection.addIceCandidate(new RTCIceCandidate(signal.candidate));
+      await peerConnection.addIceCandidate(new RTCIceCandidate(data.candidate));
     } catch (e) {
       console.error(e);
     }
@@ -618,7 +609,7 @@ socket.on('call_accepted', async (signal) => {
 });
 
 function endVoiceCall() {
-  const target = callerUser || activeTarget;
+  const target = activeCallPartner || activeTarget;
   socket.emit('end_call', { to: target });
   cleanupCallState();
 }
@@ -637,8 +628,9 @@ function cleanupCallState() {
     localStream = null;
   }
   document.getElementById('callModal').classList.add('hidden');
-  document.getElementById('remoteAudio').srcObject = null;
-  callerUser = null;
+  const audioEl = document.getElementById('remoteAudio');
+  if (audioEl) audioEl.srcObject = null;
+  activeCallPartner = null;
   incomingSignalData = null;
 }
 
