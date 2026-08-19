@@ -3,49 +3,39 @@ let isLoginMode = false;
 
 let authToken = localStorage.getItem('token');
 let currentHandle = localStorage.getItem('username');
-let userBattery = localStorage.getItem('battery') || '🔋 Active';
-let currentTheme = localStorage.getItem('theme') || 'midnight';
+let activeTarget = 'grp_gym';
+let isCurrentGroup = true;
 
-const icebreakers = [
-  "What's your current hyperfocus or comfort show?",
-  "Gym split today: Push, Pull, or Legs?",
-  "Favorite late night work beverage: Coffee or Matcha?",
-  "Recommend one album with zero skips.",
-  "Which programming language gives you the most peace?"
-];
+// Tab Routing
+function switchTab(tab) {
+  const tabs = ['match', 'signals', 'inbox'];
+  tabs.forEach(t => {
+    document.getElementById(`view${t.charAt(0).toUpperCase() + t.slice(1)}`).classList.add('hidden');
+    document.getElementById(`tab${t.charAt(0).toUpperCase() + t.slice(1)}`).className = 'flex-1 py-2 text-xs font-semibold rounded-xl text-slate-400 transition';
+  });
 
-function switchTheme(theme) {
-  document.documentElement.setAttribute('data-theme', theme);
-  localStorage.setItem('theme', theme);
-  currentTheme = theme;
-  const selector = document.getElementById('themeSelector');
-  if (selector) selector.value = theme;
+  document.getElementById(`view${tab.charAt(0).toUpperCase() + tab.slice(1)}`).classList.remove('hidden');
+  document.getElementById(`tab${tab.charAt(0).toUpperCase() + tab.slice(1)}`).className = 'flex-1 py-2 text-xs font-semibold rounded-xl bg-indigo-600 text-white transition';
+
+  if (tab === 'match') fetchMatches();
+  if (tab === 'signals') fetchPosts();
 }
-
-switchTheme(currentTheme);
-
-socket.emit('join_room', 'lounge_stream');
-
-socket.on('receive_message', (msg) => {
-  appendChatMessage(msg.user, msg.text, msg.battery, msg.user === currentHandle);
-});
 
 function toggleAuthMode() {
   isLoginMode = !isLoginMode;
   document.getElementById('signupFields').style.display = isLoginMode ? 'none' : 'block';
   document.getElementById('authSubmitBtn').innerText = isLoginMode ? 'Sign In' : 'Enter Lounge';
-  document.getElementById('authToggleText').innerHTML = isLoginMode
-    ? 'Need an anonymous handle? <b class="text-indigo-400 hover:underline">Join here</b>'
-    : 'Already a member? <b class="text-indigo-400 hover:underline">Log In</b>';
 }
 
 async function handleAuth() {
   const email = document.getElementById('authEmail').value.trim();
   const password = document.getElementById('authPass').value.trim();
-  const username = document.getElementById('authUsername').value.trim();
+  const username = document.getElementById('authUsername')?.value.trim();
+  const interest = document.getElementById('authInterest')?.value;
+  const location = document.getElementById('authLocation')?.value.trim() || 'Online';
 
   const endpoint = isLoginMode ? '/api/auth/login' : '/api/auth/signup';
-  const payload = isLoginMode ? { email, password } : { username, email, password };
+  const payload = isLoginMode ? { email, password } : { username, email, password, interest, location };
 
   try {
     const res = await fetch(endpoint, {
@@ -54,7 +44,6 @@ async function handleAuth() {
       body: JSON.stringify(payload)
     });
     const data = await res.json();
-
     if (!res.ok) throw new Error(data.msg || 'Authentication failed');
 
     localStorage.setItem('token', data.token);
@@ -67,19 +56,20 @@ async function handleAuth() {
   }
 }
 
-function updateBattery() {
-  userBattery = document.getElementById('batteryStatus').value;
-  localStorage.setItem('battery', userBattery);
-}
-
 function initView() {
   if (authToken && currentHandle) {
     document.getElementById('authSection').classList.add('hidden');
     document.getElementById('appSection').classList.remove('hidden');
     document.getElementById('navUser').classList.remove('hidden');
     document.getElementById('navUser').classList.add('flex');
-    document.getElementById('batteryStatus').value = userBattery;
-    fetchPosts();
+    document.getElementById('userBadge').innerText = `@${currentHandle}`;
+
+    socket.emit('join_user', currentHandle);
+    socket.emit('join_group', 'grp_gym');
+    socket.emit('join_group', 'grp_code');
+
+    fetchMatches();
+    openChat('grp_gym', '💪 Gym Silent Squad', true);
   }
 }
 
@@ -88,107 +78,151 @@ function logout() {
   location.reload();
 }
 
-async function fetchPosts() {
+// Discover Tinder-like Matches
+async function fetchMatches() {
   try {
-    const res = await fetch('/api/posts');
-    const posts = await res.json();
-    const container = document.getElementById('postsFeed');
+    const res = await fetch('/api/match/discover', {
+      headers: { 'Authorization': `Bearer ${authToken}` }
+    });
+    const matches = await res.json();
+    const deck = document.getElementById('matchCardDeck');
 
-    if (!posts.length) {
-      container.innerHTML = `<div class="theme-card p-8 text-center text-xs text-slate-400 rounded-3xl">No signals broadcasted yet. Create the first one!</div>`;
+    if (!matches.length) {
+      deck.innerHTML = `<div class="theme-card p-6 text-center text-xs text-slate-400 rounded-3xl">Searching for calm souls nearby...</div>`;
       return;
     }
 
-    container.innerHTML = posts.map(p => `
-      <div class="theme-card p-4 sm:p-5 rounded-3xl flex flex-col justify-between gap-3 shadow-lg">
-        <div>
-          <div class="flex items-center justify-between text-[11px] mb-2">
-            <span class="px-3 py-1 rounded-full bg-white/5 border border-white/10 font-medium text-indigo-300">${p.category}</span>
-            <span class="text-slate-400 font-medium">@${p.authorName}</span>
+    deck.innerHTML = matches.map(m => `
+      <div class="theme-card p-5 rounded-3xl space-y-4 shadow-xl border border-white/10">
+        <div class="flex items-center justify-between">
+          <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-2xl bg-indigo-600/30 border border-indigo-400/30 flex items-center justify-center font-bold text-sm text-indigo-300">
+              ${m.username.charAt(0).toUpperCase()}
+            </div>
+            <div>
+              <h4 class="font-bold text-sm">@${m.username}</h4>
+              <p class="text-[10px] text-slate-400">📍 ${m.location || 'Online'} • ${m.interest || 'Chill'}</p>
+            </div>
           </div>
-          <h4 class="font-semibold text-sm leading-snug">${p.title}</h4>
-          <p class="text-xs text-slate-400 mt-1.5 leading-relaxed">${p.description}</p>
+          <span class="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-300 border border-emerald-500/20">Silent Mode</span>
         </div>
-        <div class="flex items-center justify-between pt-3 border-t border-white/5 text-xs">
-          <span class="text-[10px] text-slate-500 font-mono">${new Date(p.createdAt || Date.now()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
-          <button onclick="joinDirectChat('${p.authorName}', '${p.title.replace(/'/g, "\\'")}')" class="theme-btn px-3 py-1.5 rounded-xl text-[11px] font-semibold active:scale-95 transition shadow-sm">Sync Request 👋</button>
+
+        <p class="text-xs text-slate-300 bg-white/5 p-3 rounded-2xl">${m.bio || 'Looking for low-friction quiet connection.'}</p>
+
+        <div class="flex gap-2">
+          <button onclick="startPrivateDM('${m.username}')" class="flex-1 theme-btn py-2.5 rounded-xl text-xs font-semibold flex items-center justify-center gap-1">
+            <span>⚡ Direct Quiet Sync</span>
+          </button>
         </div>
       </div>
     `).join('');
-  } catch (err) {
-    console.error(err);
+  } catch (e) {
+    console.error(e);
   }
 }
 
-async function submitPost() {
-  const title = document.getElementById('postTitle').value.trim();
-  const description = document.getElementById('postDesc').value.trim();
-  const category = document.querySelector('input[name="cat"]:checked').value;
-
-  if (!title || !description) return;
+// Direct Chat & Messaging
+async function openChat(target, title, isGroup) {
+  activeTarget = target;
+  isCurrentGroup = isGroup;
+  document.getElementById('activeChatTitle').innerText = title;
+  document.getElementById('activeChatSub').innerText = isGroup ? 'Public Quiet Space' : 'Private Direct Connection';
 
   try {
-    const res = await fetch('/api/posts/create', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${authToken}`
-      },
-      body: JSON.stringify({ title, description, category })
+    const res = await fetch(`/api/match/messages/${target}`, {
+      headers: { 'Authorization': `Bearer ${authToken}` }
     });
-
-    if (res.ok) {
-      document.getElementById('postTitle').value = '';
-      document.getElementById('postDesc').value = '';
-      fetchPosts();
-    }
-  } catch (err) {
-    console.error(err);
+    const msgs = await res.json();
+    const box = document.getElementById('chatMessages');
+    box.innerHTML = '';
+    msgs.forEach(m => appendChatMessage(m.sender, m.text, m.sender === currentHandle));
+  } catch (e) {
+    console.error(e);
   }
 }
 
-function insertIcebreaker() {
-  const prompt = icebreakers[Math.floor(Math.random() * icebreakers.length)];
-  document.getElementById('chatInput').value = prompt;
-  document.getElementById('promptText').innerText = '🎲 ' + prompt.substring(0, 32) + '...';
+function startPrivateDM(username) {
+  switchTab('inbox');
+  const dmList = document.getElementById('directChatList');
+  dmList.innerHTML = `
+    <button onclick="openChat('${username}', '@${username}', false)" class="w-full text-left p-2 rounded-xl text-xs bg-white/10 text-indigo-300 font-medium">
+      @${username} (Active DM)
+    </button>
+  `;
+  openChat(username, `@${username}`, false);
 }
 
-function joinDirectChat(author, planTitle) {
-  const input = document.getElementById('chatInput');
-  input.value = `Hey @${author}, down for "${planTitle}". Silent sync?`;
-  input.focus();
-}
-
-function sendChatMessage() {
+function sendDirectMessage() {
   const input = document.getElementById('chatInput');
   const text = input.value.trim();
   if (!text) return;
 
-  socket.emit('send_message', {
-    room: 'lounge_stream',
-    user: currentHandle,
-    battery: userBattery,
-    text
+  socket.emit('send_direct_message', {
+    sender: currentHandle,
+    recipient: activeTarget,
+    text,
+    isGroup: isCurrentGroup
   });
+
   input.value = '';
 }
 
-function appendChatMessage(user, text, battery, isSelf) {
+socket.on('receive_direct_message', (msg) => {
+  if (
+    (isCurrentGroup && msg.recipient === activeTarget) ||
+    (!isCurrentGroup && (msg.sender === activeTarget || msg.recipient === activeTarget))
+  ) {
+    appendChatMessage(msg.sender, msg.text, msg.sender === currentHandle);
+  }
+});
+
+function appendChatMessage(sender, text, isSelf) {
   const container = document.getElementById('chatMessages');
   const div = document.createElement('div');
   div.className = `flex flex-col ${isSelf ? 'items-end' : 'items-start'}`;
 
   div.innerHTML = `
-    <div class="flex items-center gap-1.5 mb-1 px-1">
-      <span class="text-[10px] text-slate-400 font-medium">${isSelf ? 'You' : '@' + user}</span>
-      <span class="text-[9px] opacity-70">${battery || ''}</span>
-    </div>
-    <div class="px-3.5 py-2.5 rounded-2xl max-w-[85%] leading-relaxed text-xs shadow-md ${isSelf ? 'theme-btn rounded-tr-none' : 'theme-card rounded-tl-none'}">
+    <span class="text-[9px] text-slate-500 mb-0.5">${isSelf ? 'You' : '@' + sender}</span>
+    <div class="px-3.5 py-2 rounded-2xl max-w-[80%] text-xs ${isSelf ? 'theme-btn rounded-tr-none' : 'theme-card rounded-tl-none'}">
       ${text}
     </div>
   `;
   container.appendChild(div);
   container.scrollTop = container.scrollHeight;
+}
+
+// Signals Post System
+async function fetchPosts() {
+  const res = await fetch('/api/posts');
+  const posts = await res.json();
+  const feed = document.getElementById('postsFeed');
+  feed.innerHTML = posts.map(p => `
+    <div class="theme-card p-4 rounded-3xl space-y-2">
+      <div class="flex justify-between text-[11px] text-slate-400">
+        <span class="text-indigo-300 font-medium">${p.category}</span>
+        <span>@${p.authorName}</span>
+      </div>
+      <h4 class="font-bold text-sm">${p.title}</h4>
+      <p class="text-xs text-slate-400">${p.description}</p>
+      <button onclick="startPrivateDM('${p.authorName}')" class="text-[11px] theme-btn px-3 py-1 rounded-lg mt-2">Private DM 👋</button>
+    </div>
+  `).join('');
+}
+
+async function submitPost() {
+  const title = document.getElementById('postTitle').value.trim();
+  const description = document.getElementById('postDesc').value.trim();
+  if (!title || !description) return;
+
+  await fetch('/api/posts/create', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${authToken}` },
+    body: JSON.stringify({ title, description, category: 'Quiet Sync' })
+  });
+
+  document.getElementById('postTitle').value = '';
+  document.getElementById('postDesc').value = '';
+  fetchPosts();
 }
 
 initView();

@@ -13,163 +13,69 @@
   <style>
     * { font-family: 'Inter', sans-serif; -webkit-tap-highlight-color: transparent; }
 
-    /* Theme 1: Midnight Velvet (Modern Glass) */
     html[data-theme="midnight"] {
       --bg: #030712;
-      --card-bg: rgba(17, 24, 39, 0.65);
+      --card-bg: rgba(17, 24, 39, 0.75);
       --card-border: rgba(255, 255, 255, 0.08);
-      --card-hover: rgba(255, 255, 255, 0.14);
-      --input-bg: rgba(15, 23, 42, 0.7);
+      --card-hover: rgba(255, 255, 255, 0.15);
+      --input-bg: rgba(15, 23, 42, 0.85);
       --primary: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
       --accent: #818cf8;
       --text: #f8fafc;
       --text-muted: #94a3b8;
-      --glow: rgba(99, 102, 241, 0.15);
+      --glow: rgba(99, 102, 241, 0.18);
     }
 
-    /* Theme 2: Cyber Neon (Vibrant High-Contrast) */
-    html[data-theme="cyber"] {
-      --bg: #050508;
-      --card-bg: rgba(13, 15, 26, 0.75);
-      --card-border: rgba(56, 189, 248, 0.18);
-      --card-hover: rgba(56, 189, 248, 0.35);
-      --input-bg: rgba(8, 10, 18, 0.85);
-      --primary: linear-gradient(135deg, #0284c7 0%, #06b6d4 100%);
-      --accent: #38bdf8;
-      --text: #f0fdfa;
-      --text-muted: #67e8f9;
-      --glow: rgba(6, 182, 212, 0.18);
-    }
-
-    /* Theme 3: Obsidian Minimal (Apple/Linear Style) */
-    html[data-theme="obsidian"] {
-      --bg: #000000;
-      --card-bg: #111111;
-      --card-border: #222222;
-      --card-hover: #333333;
-      --input-bg: #181818;
-      --primary: linear-gradient(135deg, #ffffff 0%, #d4d4d8 100%);
-      --primary-text: #000000;
-      --accent: #ffffff;
-      --text: #fafafa;
-      --text-muted: #a1a1aa;
-      --glow: rgba(255, 255, 255, 0.05);
-    }
-
-    body {
-      background-color: var(--bg);
-      color: var(--text);
-      transition: background-color 0.25s ease;
-    }
-
-    .theme-card {
-      background: var(--card-bg);
-      border: 1px solid var(--card-border);
-      backdrop-filter: blur(20px);
-      -webkit-backdrop-filter: blur(20px);
-      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-    }
-
-    .theme-card:hover {
-      border-color: var(--card-hover);
-    }
-
-    .theme-input {
-      background: var(--input-bg);
-      border: 1px solid var(--card-border);
-      color: var(--text);
-      transition: border-color 0.15s ease, box-shadow 0.15s ease;
-    }
-    .theme-input:focus {
-      border-color: var(--accent);
-      box-shadow: 0 0 0 2px var(--glow);
-    }
-
-    .theme-btn {
-      background: var(--primary);
-      color: #ffffff;
-    }
-    html[data-theme="obsidian"] .theme-btn {
-      color: #000000 !important;
-    }
-
-    .ambient-glow {
-      position: fixed;
-      top: -20%;
-      left: 50%;
-      transform: translateX(-50%);
-      width: 600px;
-      height: 400px;
-      background: var(--glow);
-      filter: blur(120px);
-      pointer-events: none;
-      z-index: 0;
-      border-radius: 50%;
-    }
-
-    .custom-scroll::-webkit-scrollbar { width: 4px; }
+    body { background-color: var(--bg); color: var(--text); }
+    .theme-card { background: var(--card-bg); border: 1px solid var(--card-border); backdrop-filter: blur(20px); }
+    .theme-input { background: var(--input-bg); border: 1px solid var(--card-border); color: var(--text); }
+    .theme-input:focus { border-color: var(--accent); }
+    .theme-btn { background: var(--primary); color: #ffffff; }
+    .custom-scroll::-webkit-scrollbar { width: 3px; }
     .custom-scroll::-webkit-scrollbar-thumb { background: var(--card-border); border-radius: 10px; }
   </style>
 </head>
-<body class="min-h-screen antialiased selection:bg-indigo-500 selection:text-white pb-24 relative overflow-x-hidden">
+<body class="min-h-screen antialiased selection:bg-indigo-500 selection:text-white pb-24">
 
-  <!-- Ambient Light Effect -->
-  <div class="ambient-glow"></div>
-
-  <!-- Top Navbar -->
+  <!-- Header -->
   <header class="sticky top-0 z-50 theme-card border-b border-white/5 px-4 py-3">
     <div class="max-w-4xl mx-auto flex items-center justify-between">
-      
-      <!-- Brand -->
       <div class="flex items-center gap-2.5">
-        <div class="w-8 h-8 rounded-xl theme-btn flex items-center justify-center font-bold text-sm shadow-md">
-          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
-        </div>
+        <div class="w-8 h-8 rounded-xl theme-btn flex items-center justify-center font-bold text-sm shadow-md">L</div>
         <div>
           <span class="font-bold text-sm tracking-tight block leading-none">Lounge</span>
-          <span class="text-[10px] text-slate-400 font-medium leading-none">Zero Pressure Network</span>
+          <span class="text-[10px] text-slate-400 font-medium">Silent Sync & Quiet Matches</span>
         </div>
       </div>
 
-      <!-- Controls -->
-      <div class="flex items-center gap-2">
-        <div class="relative">
-          <select id="themeSelector" onchange="switchTheme(this.value)" class="theme-input text-xs font-medium py-1.5 px-3 rounded-full outline-none appearance-none pr-7 cursor-pointer">
-            <option value="midnight">🌌 Midnight</option>
-            <option value="cyber">⚡ Cyber</option>
-            <option value="obsidian">💎 Obsidian</option>
-          </select>
-          <div class="absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400 text-[10px]">▼</div>
-        </div>
-
-        <div id="navUser" class="hidden items-center gap-2">
-          <select id="batteryStatus" onchange="updateBattery()" class="theme-input text-xs font-medium py-1.5 px-3 rounded-full outline-none cursor-pointer">
-            <option value="🔋 Active">🔋 High</option>
-            <option value="⚡ Lurking">⚡ Low</option>
-            <option value="🔕 Do Not Disturb">🔕 Mute</option>
-          </select>
-          <button onclick="logout()" class="text-xs text-rose-400/80 hover:text-rose-400 py-1.5 px-2.5 rounded-full hover:bg-rose-500/10 transition">Exit</button>
-        </div>
+      <div id="navUser" class="hidden items-center gap-2">
+        <span id="userBadge" class="text-xs px-2.5 py-1 rounded-full bg-white/5 border border-white/10 text-indigo-300 font-medium"></span>
+        <button onclick="logout()" class="text-xs text-rose-400 hover:bg-rose-500/10 px-2 py-1 rounded-lg transition">Exit</button>
       </div>
-
     </div>
   </header>
 
-  <main class="max-w-4xl mx-auto px-4 mt-6 relative z-10">
+  <main class="max-w-4xl mx-auto px-4 mt-6">
 
     <!-- Auth Container -->
-    <div id="authSection" class="max-w-sm mx-auto theme-card p-6 sm:p-8 rounded-3xl shadow-2xl mt-8">
+    <div id="authSection" class="max-w-sm mx-auto theme-card p-6 rounded-3xl shadow-2xl mt-8">
       <div class="text-center mb-6">
-        <div class="w-12 h-12 theme-btn rounded-2xl mx-auto flex items-center justify-center mb-3 shadow-lg">
-          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
-        </div>
         <h2 class="text-lg font-bold tracking-tight">Enter Your Space</h2>
-        <p class="text-xs text-slate-400 mt-1">Anonymous, private & low-energy connection</p>
+        <p class="text-xs text-slate-400 mt-1">Zero small talk. Real anonymous connection.</p>
       </div>
 
       <div class="space-y-3">
-        <div id="signupFields">
-          <input id="authUsername" type="text" placeholder="Anonymous alias (@zen_walker)" class="w-full theme-input px-4 py-3 rounded-2xl text-xs outline-none">
+        <div id="signupFields" class="space-y-3">
+          <input id="authUsername" type="text" placeholder="Anonymous alias (@zen_sync)" class="w-full theme-input px-4 py-3 rounded-2xl text-xs outline-none">
+          <div class="grid grid-cols-2 gap-2">
+            <select id="authInterest" class="theme-input px-3 py-2.5 rounded-xl text-xs outline-none">
+              <option value="Gym">💪 Gym Partner</option>
+              <option value="Coding">💻 Study / Code</option>
+              <option value="Gaming">🎮 Silent Gaming</option>
+              <option value="Coffee">☕ Quiet Coffee</option>
+            </select>
+            <input id="authLocation" type="text" placeholder="City (e.g., Delhi)" class="theme-input px-3 py-2.5 rounded-xl text-xs outline-none">
+          </div>
         </div>
         <input id="authEmail" type="email" placeholder="Email address" class="w-full theme-input px-4 py-3 rounded-2xl text-xs outline-none">
         <input id="authPass" type="password" placeholder="Password" class="w-full theme-input px-4 py-3 rounded-2xl text-xs outline-none">
@@ -182,90 +88,84 @@
       </div>
     </div>
 
-    <!-- Main Content App -->
+    <!-- Main Workspace with Tabs -->
     <div id="appSection" class="hidden space-y-6">
 
-      <!-- Create Broadcast Card -->
-      <div class="theme-card p-5 sm:p-6 rounded-3xl shadow-xl">
-        <div class="flex items-center gap-2 mb-4">
-          <div class="w-2 h-2 rounded-full bg-indigo-400 animate-ping"></div>
-          <h3 class="text-xs font-bold uppercase tracking-wider text-slate-300">Broadcast Quiet Activity</h3>
-        </div>
-
-        <div class="space-y-3">
-          <!-- Categories Filter Grid -->
-          <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
-            <label class="cursor-pointer">
-              <input type="radio" name="cat" value="Gym Buddy" class="peer hidden" checked>
-              <div class="text-xs text-center py-2 px-3 rounded-xl border border-white/5 peer-checked:border-indigo-400 peer-checked:bg-indigo-500/10 peer-checked:text-indigo-300 text-slate-400 font-medium transition">💪 Gym Sync</div>
-            </label>
-            <label class="cursor-pointer">
-              <input type="radio" name="cat" value="Study/Coding" class="peer hidden">
-              <div class="text-xs text-center py-2 px-3 rounded-xl border border-white/5 peer-checked:border-indigo-400 peer-checked:bg-indigo-500/10 peer-checked:text-indigo-300 text-slate-400 font-medium transition">💻 Study / Code</div>
-            </label>
-            <label class="cursor-pointer">
-              <input type="radio" name="cat" value="Casual Talk" class="peer hidden">
-              <div class="text-xs text-center py-2 px-3 rounded-xl border border-white/5 peer-checked:border-indigo-400 peer-checked:bg-indigo-500/10 peer-checked:text-indigo-300 text-slate-400 font-medium transition">☕ Casual</div>
-            </label>
-            <label class="cursor-pointer">
-              <input type="radio" name="cat" value="Gaming" class="peer hidden">
-              <div class="text-xs text-center py-2 px-3 rounded-xl border border-white/5 peer-checked:border-indigo-400 peer-checked:bg-indigo-500/10 peer-checked:text-indigo-300 text-slate-400 font-medium transition">🎮 Gaming</div>
-            </label>
-          </div>
-
-          <input id="postTitle" placeholder="Title (e.g. 6:30 AM Gym partner - Silent workout only)" class="w-full theme-input px-4 py-3 rounded-2xl text-xs outline-none">
-          <textarea id="postDesc" rows="2" placeholder="Rules or notes (e.g. No small talk required, just form check & mutual focus)..." class="w-full theme-input px-4 py-3 rounded-2xl text-xs outline-none resize-none"></textarea>
-
-          <div class="flex justify-end pt-1">
-            <button onclick="submitPost()" class="theme-btn px-6 py-2.5 rounded-xl text-xs font-semibold shadow-md active:scale-95 transition">Post Signal</button>
-          </div>
-        </div>
+      <!-- Navigation Tabs -->
+      <div class="flex items-center justify-around bg-slate-900/80 border border-white/10 p-1.5 rounded-2xl max-w-md mx-auto">
+        <button onclick="switchTab('match')" id="tabMatch" class="flex-1 py-2 text-xs font-semibold rounded-xl bg-indigo-600 text-white transition">🔥 Sync Match</button>
+        <button onclick="switchTab('signals')" id="tabSignals" class="flex-1 py-2 text-xs font-semibold rounded-xl text-slate-400 transition">📡 Signals</button>
+        <button onclick="switchTab('inbox')" id="tabInbox" class="flex-1 py-2 text-xs font-semibold rounded-xl text-slate-400 transition">💬 Inbox & Squads</button>
       </div>
 
-      <!-- Two Columns: Feed + Live Chat -->
-      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
-
-        <!-- Feed List (Left 7 Cols) -->
-        <div class="lg:col-span-7 space-y-4">
-          <div class="flex items-center justify-between px-1">
-            <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">Live Activity Signals</span>
-            <button onclick="fetchPosts()" class="text-xs text-indigo-400 hover:text-indigo-300 flex items-center gap-1 font-medium">
-              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
-              Refresh
-            </button>
-          </div>
-          <div id="postsFeed" class="space-y-3"></div>
+      <!-- TAB 1: SYNC MATCH (Tinder-style Deck for Introverts) -->
+      <div id="viewMatch" class="space-y-4">
+        <div class="text-center max-w-sm mx-auto">
+          <h3 class="text-sm font-bold">Quiet Match Radar</h3>
+          <p class="text-xs text-slate-400">People with matching silent energy near your frequency</p>
         </div>
+        <div id="matchCardDeck" class="max-w-sm mx-auto space-y-4"></div>
+      </div>
 
-        <!-- Chat Lounge (Right 5 Cols) -->
-        <div class="lg:col-span-5">
-          <div class="theme-card p-4 rounded-3xl flex flex-col h-[520px] sticky top-20 shadow-xl">
-            
-            <div class="flex items-center justify-between pb-3 border-b border-white/5">
-              <div class="flex items-center gap-2">
-                <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-                <h4 class="text-xs font-bold tracking-tight">Quiet Lounge</h4>
-              </div>
-              <span class="text-[10px] text-slate-500 font-medium">Synced</span>
+      <!-- TAB 2: SIGNALS & POSTS -->
+      <div id="viewSignals" class="hidden space-y-6">
+        <div class="theme-card p-5 rounded-3xl">
+          <h3 class="text-xs font-bold uppercase tracking-wider text-slate-300 mb-3">Broadcast Silent Activity</h3>
+          <div class="space-y-3">
+            <input id="postTitle" placeholder="Title (e.g. 7 AM Silent leg day, zero talks)" class="w-full theme-input px-4 py-2.5 rounded-xl text-xs outline-none">
+            <textarea id="postDesc" rows="2" placeholder="Silent rules & details..." class="w-full theme-input px-4 py-2.5 rounded-xl text-xs outline-none resize-none"></textarea>
+            <div class="flex justify-end">
+              <button onclick="submitPost()" class="theme-btn px-5 py-2 rounded-xl text-xs font-semibold">Broadcast</button>
             </div>
+          </div>
+        </div>
+        <div id="postsFeed" class="space-y-3"></div>
+      </div>
 
-            <!-- Messages Box -->
-            <div id="chatMessages" class="flex-1 overflow-y-auto custom-scroll py-3 space-y-2.5 text-xs"></div>
-
-            <!-- Icebreaker Prompt -->
-            <div class="py-2">
-              <button onclick="insertIcebreaker()" class="w-full text-left text-[11px] p-2.5 rounded-2xl theme-input flex items-center justify-between group hover:border-indigo-400 transition">
-                <span id="promptText" class="truncate text-slate-300">🎲 Pick silent icebreaker...</span>
-                <span class="text-[10px] text-indigo-400 shrink-0 font-medium ml-1">Tap</span>
+      <!-- TAB 3: INBOX / PRIVATE DMS & GROUPS -->
+      <div id="viewInbox" class="hidden grid grid-cols-1 md:grid-cols-12 gap-4">
+        
+        <!-- Channels & DM List (4 Cols) -->
+        <div class="md:col-span-4 space-y-3">
+          <div class="theme-card p-3 rounded-2xl">
+            <span class="text-[10px] uppercase font-bold text-slate-500 block mb-2">Squads / Groups</span>
+            <div class="space-y-1">
+              <button onclick="openChat('grp_gym', '💪 Gym Silent Squad', true)" class="w-full text-left p-2 rounded-xl text-xs hover:bg-white/5 transition flex items-center justify-between">
+                <span>💪 Gym Squad</span>
+                <span class="text-[10px] text-emerald-400 font-mono">Live</span>
+              </button>
+              <button onclick="openChat('grp_code', '💻 Late Night Coders', true)" class="w-full text-left p-2 rounded-xl text-xs hover:bg-white/5 transition flex items-center justify-between">
+                <span>💻 Coders Lounge</span>
+                <span class="text-[10px] text-emerald-400 font-mono">Live</span>
               </button>
             </div>
+          </div>
 
-            <!-- Input Bar -->
-            <div class="flex gap-1.5 pt-2 border-t border-white/5">
-              <input id="chatInput" onkeydown="if(event.key==='Enter') sendChatMessage()" placeholder="Say something quietly..." class="flex-1 theme-input px-3.5 py-2.5 rounded-2xl text-xs outline-none">
-              <button onclick="sendChatMessage()" class="theme-btn px-4 py-2.5 rounded-2xl text-xs font-semibold active:scale-95 transition">Send</button>
+          <div class="theme-card p-3 rounded-2xl">
+            <span class="text-[10px] uppercase font-bold text-slate-500 block mb-2">Direct Chats (DMs)</span>
+            <div id="directChatList" class="space-y-1 text-xs text-slate-400">
+              <p class="text-[11px] p-2">Match with someone to unlock direct quiet chat.</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Active Chat Window (8 Cols) -->
+        <div class="md:col-span-8">
+          <div class="theme-card p-4 rounded-3xl flex flex-col h-[520px]">
+            <div class="flex items-center justify-between pb-3 border-b border-white/5">
+              <div>
+                <h4 id="activeChatTitle" class="text-xs font-bold">Select a Room / DM</h4>
+                <p id="activeChatSub" class="text-[10px] text-slate-400">End-to-end quiet sync</p>
+              </div>
+              <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
             </div>
 
+            <div id="chatMessages" class="flex-1 overflow-y-auto custom-scroll py-3 space-y-2.5 text-xs"></div>
+
+            <div class="flex gap-1.5 pt-2 border-t border-white/5">
+              <input id="chatInput" onkeydown="if(event.key==='Enter') sendDirectMessage()" placeholder="Type softly..." class="flex-1 theme-input px-3.5 py-2.5 rounded-2xl text-xs outline-none">
+              <button onclick="sendDirectMessage()" class="theme-btn px-4 py-2.5 rounded-2xl text-xs font-semibold">Send</button>
+            </div>
           </div>
         </div>
 
