@@ -32,27 +32,34 @@ if (uri) {
     .catch(err => console.error('db error:', err));
 }
 
-// Real-time Chat Engine
 io.on('connection', (socket) => {
-  socket.on('join_user', (username) => {
-    socket.join(username);
+  socket.on('join_user', (rawUser) => {
+    if (!rawUser) return;
+    const user = rawUser.replace('@', '').trim();
+    socket.join(user);
   });
 
-  socket.on('join_group', (groupName) => {
-    socket.join(groupName);
+  socket.on('join_group', (room) => {
+    socket.join(room);
   });
 
   socket.on('send_direct_message', async (data) => {
-    const { sender, recipient, text, isGroup } = data;
     try {
-      const msg = new Message({ sender, recipient, text, isGroup: !!isGroup });
+      const sender = data.sender.replace('@', '').trim();
+      const recipient = data.recipient.replace('@', '').trim();
+      const text = data.text.trim();
+      const isGroup = !!data.isGroup;
+
+      const msg = new Message({ sender, recipient, text, isGroup });
       await msg.save();
 
       if (isGroup) {
         io.to(recipient).emit('receive_direct_message', msg);
       } else {
         io.to(recipient).emit('receive_direct_message', msg);
-        io.to(sender).emit('receive_direct_message', msg);
+        if (sender !== recipient) {
+          io.to(sender).emit('receive_direct_message', msg);
+        }
       }
     } catch (e) {
       console.error(e);

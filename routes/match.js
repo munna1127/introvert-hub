@@ -6,7 +6,6 @@ const auth = require('../middleware/auth');
 
 router.get('/discover', auth, async (req, res) => {
   try {
-    const currentUser = await User.findById(req.user.id);
     const matches = await User.find({
       _id: { $ne: req.user.id }
     }).select('username interest location battery bio').limit(20);
@@ -18,18 +17,22 @@ router.get('/discover', auth, async (req, res) => {
 
 router.get('/messages/:recipient', auth, async (req, res) => {
   try {
-    const cleanRecipient = req.params.recipient.replace('@', '').trim();
-    const currentUser = req.user.username.replace('@', '').trim();
+    const target = req.params.recipient.replace('@', '').trim();
+    const me = req.user.username.replace('@', '').trim();
 
     let query;
-    if (cleanRecipient.startsWith('grp_')) {
-      query = { recipient: cleanRecipient, isGroup: true };
+    if (target.startsWith('grp_')) {
+      query = { recipient: target, isGroup: true };
+    } else if (target === me) {
+      // Handle Self-test Chat
+      query = { isGroup: false, sender: me, recipient: me };
     } else {
+      // 1-on-1 DM query
       query = {
         isGroup: false,
         $or: [
-          { sender: currentUser, recipient: cleanRecipient },
-          { sender: cleanRecipient, recipient: currentUser }
+          { sender: me, recipient: target },
+          { sender: target, recipient: me }
         ]
       };
     }
