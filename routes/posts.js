@@ -15,14 +15,14 @@ router.get('/', async (req, res) => {
 router.post('/create', auth, async (req, res) => {
   try {
     const { title, description, category } = req.body;
-    if (!title || !description || !category) {
-      return res.status(400).json({ msg: 'Missing parameters' });
+    if (!title || !description) {
+      return res.status(400).json({ msg: 'Missing title or description' });
     }
 
     const post = new Post({
       author: req.user.id,
-      authorName: req.user.username,
-      category,
+      authorName: req.user.username.replace('@', '').trim(),
+      category: category || 'Quiet Sync',
       title,
       description
     });

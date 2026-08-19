@@ -11,21 +11,25 @@ let checkTimer = null;
 let activeResetToken = null;
 
 function isValidGmail(email) {
-  const re = /^[a-zA-Z0-9](\.?[a-zA-Z0-9_-]){5,}@gmail\.com$/;
-  return re.test(email.toLowerCase());
+  return /^[a-zA-Z0-9](\.?[a-zA-Z0-9_-]){5,}@gmail\.com$/.test(email.toLowerCase());
 }
 
 function switchTab(tab) {
   ['match', 'inbox', 'signals'].forEach(t => {
-    document.getElementById(`view${t.charAt(0).toUpperCase() + t.slice(1)}`).classList.add('hidden');
-    document.getElementById(`tab${t.charAt(0).toUpperCase() + t.slice(1)}`).className = 'flex-1 py-2 text-xs font-bold rounded-xl text-slate-400 transition';
+    const view = document.getElementById(`view${t.charAt(0).toUpperCase() + t.slice(1)}`);
+    const btn = document.getElementById(`tab${t.charAt(0).toUpperCase() + t.slice(1)}`);
+    if (view) view.classList.add('hidden');
+    if (btn) btn.className = 'flex-1 py-2 text-xs font-bold rounded-xl text-slate-400 transition';
   });
 
-  document.getElementById(`view${tab.charAt(0).toUpperCase() + tab.slice(1)}`).classList.remove('hidden');
-  document.getElementById(`tab${tab.charAt(0).toUpperCase() + tab.slice(1)}`).className = 'flex-1 py-2 text-xs font-bold rounded-xl bg-indigo-600 text-white transition';
+  const activeView = document.getElementById(`view${tab.charAt(0).toUpperCase() + tab.slice(1)}`);
+  const activeBtn = document.getElementById(`tab${tab.charAt(0).toUpperCase() + tab.slice(1)}`);
+  if (activeView) activeView.classList.remove('hidden');
+  if (activeBtn) activeBtn.className = 'flex-1 py-2 text-xs font-bold rounded-xl bg-indigo-600 text-white transition';
 
   if (tab === 'match') renderCurrentCard();
   if (tab === 'signals') fetchPosts();
+  if (tab === 'inbox') loadConversations();
 }
 
 function toggleAuthMode() {
@@ -66,6 +70,7 @@ function checkUsernameLive(val) {
   }, 300);
 }
 
+// Password Recovery Handlers
 function openForgotModal() {
   document.getElementById('forgotModal').classList.remove('hidden');
   document.getElementById('forgotStep1').classList.remove('hidden');
@@ -78,9 +83,7 @@ function closeForgotModal() {
 
 async function requestResetCode() {
   const email = document.getElementById('forgotEmail').value.trim();
-  if (!isValidGmail(email)) {
-    return alert('Please enter a valid @gmail.com address.');
-  }
+  if (!isValidGmail(email)) return alert('Please enter a valid @gmail.com address.');
 
   try {
     const res = await fetch('/api/auth/forgot-password', {
@@ -128,13 +131,8 @@ async function handleAuth() {
   const interest = document.getElementById('authInterest')?.value || 'Gym';
   const location = document.getElementById('authLocation')?.value.trim() || 'Online';
 
-  if (!isValidGmail(email)) {
-    return alert('Only valid @gmail.com addresses are permitted (e.g. name@gmail.com).');
-  }
-
-  if (password.length < 6) {
-    return alert('Password must be at least 6 characters.');
-  }
+  if (!isValidGmail(email)) return alert('Only valid @gmail.com addresses are permitted.');
+  if (password.length < 6) return alert('Password must be at least 6 characters.');
 
   const endpoint = isLoginMode ? '/api/auth/login' : '/api/auth/signup';
   const payload = isLoginMode ? { email, password } : { username, email, password, interest, location };
@@ -148,7 +146,7 @@ async function handleAuth() {
     const data = await res.json();
     if (!res.ok) throw new Error(data.msg || 'Authentication failed');
 
-    const cleanUser = data.username.replace('@', '');
+    const cleanUser = data.username.replace('@', '').trim();
     localStorage.setItem('token', data.token);
     localStorage.setItem('username', cleanUser);
     authToken = data.token;
@@ -303,13 +301,12 @@ function swipeAction(type) {
 
 function openMatchedChat() {
   document.getElementById('matchPopup').classList.add('hidden');
-  switchTab('inbox');
-  openChat(lastMatchedUser);
+  startDirectDM(lastMatchedUser);
 }
 
 function saveDM(username) {
   const clean = username.replace('@', '').trim();
-  if (clean === currentHandle) return;
+  if (!clean || clean === currentHandle) return;
 
   let dms = JSON.parse(localStorage.getItem('saved_dms') || '[]');
   if (!dms.includes(clean)) {
@@ -317,6 +314,15 @@ function saveDM(username) {
     localStorage.setItem('saved_dms', JSON.stringify(dms));
   }
   loadConversations();
+}
+
+function startDirectDM(username) {
+  const clean = username.replace('@', '').trim();
+  if (!clean || clean === currentHandle) return;
+
+  saveDM(clean);
+  switchTab('inbox');
+  openChat(clean);
 }
 
 function loadConversations() {
@@ -416,30 +422,36 @@ function appendChatMessage(sender, text, isSelf) {
   container.scrollTop = container.scrollHeight;
 }
 
-// Signals Post
+// Signals Post System
 async function fetchPosts() {
-  const res = await fetch('/api/posts');
-  const posts = await res.json();
-  const feed = document.getElementById('postsFeed');
-  feed.innerHTML = posts.map(p => {
-    const isSelfPost = (p.authorName || '').replace('@', '').trim() === currentHandle;
-    return `
-      <div class="glass-card p-4 rounded-2xl space-y-2">
-        <div class="flex justify-between text-[11px] text-slate-400">
-          <span class="text-indigo-300 font-bold">${p.category}</span>
-          <span>@${p.authorName}</span>
+  try {
+    const res = await fetch('/api/posts');
+    const posts = await res.json();
+    const feed = document.getElementById('postsFeed');
+    feed.innerHTML = posts.map(p => {
+      const cleanAuthor = (p.authorName || '').replace('@', '').trim();
+      const isSelfPost = cleanAuthor === currentHandle;
+
+      return `
+        <div class="glass-card p-4 rounded-2xl space-y-2">
+          <div class="flex justify-between text-[11px] text-slate-400">
+            <span class="text-indigo-300 font-bold">${p.category}</span>
+            <span>@${cleanAuthor}</span>
+          </div>
+          <h4 class="font-bold text-sm text-slate-100">${p.title}</h4>
+          <p class="text-xs text-slate-400 leading-relaxed">${p.description}</p>
+          <div class="pt-1">
+            ${isSelfPost 
+              ? `<span class="text-[10px] text-slate-500 font-medium">Your Signal (Broadcasting)</span>` 
+              : `<button onclick="startDirectDM('${cleanAuthor}')" class="text-[11px] bg-indigo-600 hover:bg-indigo-500 text-white font-semibold px-4 py-1.5 rounded-xl transition shadow-md">Silent DM 👋</button>`
+            }
+          </div>
         </div>
-        <h4 class="font-bold text-sm">${p.title}</h4>
-        <p class="text-xs text-slate-400">${p.description}</p>
-        <div class="pt-1">
-          ${isSelfPost 
-            ? `<span class="text-[10px] text-slate-500 font-medium">Your Signal (Broadcasting)</span>` 
-            : `<button onclick="saveDM('${p.authorName}'); openChat('${p.authorName}')" class="text-[11px] bg-indigo-600/30 border border-indigo-500/30 text-indigo-300 px-3 py-1 rounded-xl">Silent DM 👋</button>`
-          }
-        </div>
-      </div>
-    `;
-  }).join('');
+      `;
+    }).join('');
+  } catch (e) {
+    console.error(e);
+  }
 }
 
 async function submitPost() {
