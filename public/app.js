@@ -3,11 +3,20 @@ let isLoginMode = false;
 
 let authToken = localStorage.getItem('token');
 let currentHandle = localStorage.getItem('username');
+let userBattery = localStorage.getItem('battery') || '🔋 Energized';
+
+const icebreakers = [
+  "What is your go-to comfort music right now?",
+  "Gym workout focus today: Push, Pull, or Legs?",
+  "Favorite coding stack or current side project?",
+  "Coffee or green tea for late night focus?",
+  "What is the best book/movie you experienced recently?"
+];
 
 socket.emit('join_room', 'lounge_stream');
 
 socket.on('receive_message', (msg) => {
-  appendChatMessage(msg.user, msg.text, msg.user === currentHandle);
+  appendChatMessage(msg.user, msg.text, msg.battery, msg.user === currentHandle);
 });
 
 function toggleAuthMode() {
@@ -16,7 +25,7 @@ function toggleAuthMode() {
   document.getElementById('authSubmitBtn').innerText = isLoginMode ? 'Sign In' : 'Enter Lounge';
   document.getElementById('authToggleText').innerHTML = isLoginMode
     ? 'Need a quiet handle? <b class="text-indigo-400">Join here</b>'
-    : 'Already have a quiet space? <b class="text-indigo-400">Log In</b>';
+    : 'Already a member? <b class="text-indigo-400">Log In</b>';
 }
 
 async function handleAuth() {
@@ -47,6 +56,11 @@ async function handleAuth() {
   }
 }
 
+function updateBattery() {
+  userBattery = document.getElementById('batteryStatus').value;
+  localStorage.setItem('battery', userBattery);
+}
+
 function initView() {
   if (authToken && currentHandle) {
     document.getElementById('authSection').classList.add('hidden');
@@ -54,6 +68,7 @@ function initView() {
     document.getElementById('navUser').classList.remove('hidden');
     document.getElementById('navUser').classList.add('flex');
     document.getElementById('userBadge').innerText = `@${currentHandle}`;
+    document.getElementById('batteryStatus').value = userBattery;
     fetchPosts();
   }
 }
@@ -75,13 +90,19 @@ async function fetchPosts() {
     }
 
     container.innerHTML = posts.map(p => `
-      <div class="glass p-4 rounded-2xl hover:border-white/20 transition group">
-        <div class="flex items-center justify-between text-[11px] mb-2">
-          <span class="px-2.5 py-0.5 rounded-full bg-slate-800 text-indigo-300 border border-white/5 font-medium">${p.category}</span>
-          <span class="text-slate-500">@${p.authorName}</span>
+      <div class="glass p-4 rounded-2xl hover:border-white/20 transition flex flex-col justify-between gap-3">
+        <div>
+          <div class="flex items-center justify-between text-[11px] mb-2">
+            <span class="px-2.5 py-0.5 rounded-full bg-slate-800 text-indigo-300 border border-white/5 font-medium">${p.category}</span>
+            <span class="text-slate-500">@${p.authorName}</span>
+          </div>
+          <h4 class="font-semibold text-sm text-slate-100">${p.title}</h4>
+          <p class="text-xs text-slate-400 mt-1 leading-relaxed">${p.description}</p>
         </div>
-        <h4 class="font-semibold text-sm text-slate-100 group-hover:text-indigo-200 transition">${p.title}</h4>
-        <p class="text-xs text-slate-400 mt-1 leading-relaxed">${p.description}</p>
+        <div class="flex items-center justify-between pt-2 border-t border-white/5 text-xs">
+          <span class="text-[10px] text-slate-500">${new Date(p.createdAt || Date.now()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+          <button onclick="joinDirectChat('${p.authorName}', '${p.title.replace(/'/g, "\\'")}')" class="bg-indigo-600/20 hover:bg-indigo-600 text-indigo-300 hover:text-white px-3 py-1 rounded-lg transition text-[11px] border border-indigo-500/20">Quiet Sync 👋</button>
+        </div>
       </div>
     `).join('');
   } catch (err) {
@@ -116,6 +137,18 @@ async function submitPost() {
   }
 }
 
+function insertIcebreaker() {
+  const randomPrompt = icebreakers[Math.floor(Math.random() * icebreakers.length)];
+  document.getElementById('chatInput').value = randomPrompt;
+  document.getElementById('promptText').innerText = '🎲 ' + randomPrompt.substring(0, 30) + '...';
+}
+
+function joinDirectChat(author, planTitle) {
+  const input = document.getElementById('chatInput');
+  input.value = `Hey @${author}, saw your plan "${planTitle}". I am down for a quiet sync!`;
+  input.focus();
+}
+
 function sendChatMessage() {
   const input = document.getElementById('chatInput');
   const text = input.value.trim();
@@ -124,19 +157,23 @@ function sendChatMessage() {
   socket.emit('send_message', {
     room: 'lounge_stream',
     user: currentHandle,
+    battery: userBattery,
     text
   });
   input.value = '';
 }
 
-function appendChatMessage(user, text, isSelf) {
+function appendChatMessage(user, text, battery, isSelf) {
   const container = document.getElementById('chatMessages');
   const div = document.createElement('div');
   div.className = `flex flex-col ${isSelf ? 'items-end' : 'items-start'}`;
 
   div.innerHTML = `
-    <span class="text-[10px] text-slate-500 mb-0.5">${isSelf ? 'You' : '@' + user}</span>
-    <div class="px-3 py-2 rounded-xl max-w-[85%] ${isSelf ? 'bg-indigo-600 text-white' : 'glass text-slate-200'}">
+    <div class="flex items-center gap-1.5 mb-0.5">
+      <span class="text-[10px] text-slate-400 font-medium">${isSelf ? 'You' : '@' + user}</span>
+      <span class="text-[9px] text-slate-500">${battery || ''}</span>
+    </div>
+    <div class="px-3.5 py-2 rounded-2xl max-w-[85%] leading-relaxed ${isSelf ? 'bg-indigo-600 text-white rounded-tr-none' : 'glass text-slate-200 rounded-tl-none'}">
       ${text}
     </div>
   `;
