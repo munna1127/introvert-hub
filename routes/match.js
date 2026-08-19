@@ -4,10 +4,12 @@ const User = require('../models/User');
 const Message = require('../models/Message');
 const auth = require('../middleware/auth');
 
+// Discover only other users
 router.get('/discover', auth, async (req, res) => {
   try {
     const matches = await User.find({
-      _id: { $ne: req.user.id }
+      _id: { $ne: req.user.id },
+      username: { $ne: req.user.username }
     }).select('username interest location battery bio').limit(20);
     res.json(matches);
   } catch (err) {
@@ -15,7 +17,7 @@ router.get('/discover', auth, async (req, res) => {
   }
 });
 
-// Current User Details
+// Fetch user profile
 router.get('/me', auth, async (req, res) => {
   try {
     const user = await User.findById(req.user.id).select('-password');
@@ -25,7 +27,7 @@ router.get('/me', auth, async (req, res) => {
   }
 });
 
-// Profile & Username Update
+// Update Profile
 router.put('/update-profile', auth, async (req, res) => {
   try {
     let { username, bio, interest, location } = req.body;
@@ -33,7 +35,6 @@ router.put('/update-profile', auth, async (req, res) => {
 
     const currentUser = await User.findById(req.user.id);
 
-    // If username changed, ensure uniqueness
     if (username && username.toLowerCase() !== currentUser.username.toLowerCase()) {
       const taken = await User.findOne({ username: new RegExp(`^${username}$`, 'i') });
       if (taken) {
@@ -60,16 +61,19 @@ router.put('/update-profile', auth, async (req, res) => {
   }
 });
 
+// Fetch Messages - Strictly disallow self-DM
 router.get('/messages/:recipient', auth, async (req, res) => {
   try {
     const target = req.params.recipient.replace('@', '').trim();
     const me = req.user.username.replace('@', '').trim();
 
+    if (target === me) {
+      return res.status(400).json({ msg: 'Cannot initiate chat with yourself' });
+    }
+
     let query;
     if (target.startsWith('grp_')) {
       query = { recipient: target, isGroup: true };
-    } else if (target === me) {
-      query = { isGroup: false, sender: me, recipient: me };
     } else {
       query = {
         isGroup: false,

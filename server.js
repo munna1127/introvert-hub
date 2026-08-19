@@ -50,6 +50,8 @@ io.on('connection', (socket) => {
       const text = data.text.trim();
       const isGroup = !!data.isGroup;
 
+      if (!isGroup && sender === recipient) return;
+
       const msg = new Message({ sender, recipient, text, isGroup });
       await msg.save();
 
@@ -57,9 +59,7 @@ io.on('connection', (socket) => {
         io.to(recipient).emit('receive_direct_message', msg);
       } else {
         io.to(recipient).emit('receive_direct_message', msg);
-        if (sender !== recipient) {
-          io.to(sender).emit('receive_direct_message', msg);
-        }
+        io.to(sender).emit('receive_direct_message', msg);
       }
     } catch (e) {
       console.error(e);

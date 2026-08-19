@@ -89,7 +89,7 @@ async function handleAuth() {
 
 function initView() {
   if (authToken && currentHandle) {
-    currentHandle = currentHandle.replace('@', '');
+    currentHandle = currentHandle.replace('@', '').trim();
     document.getElementById('authSection').classList.add('hidden');
     document.getElementById('appSection').classList.remove('hidden');
     document.getElementById('navUser').classList.remove('hidden');
@@ -98,6 +98,11 @@ function initView() {
 
     socket.emit('join_user', currentHandle);
     socket.emit('join_group', 'grp_general');
+
+    // Purge self from DM history if previously saved
+    let dms = JSON.parse(localStorage.getItem('saved_dms') || '[]');
+    dms = dms.filter(u => u !== currentHandle);
+    localStorage.setItem('saved_dms', JSON.stringify(dms));
 
     loadConversations();
     fetchMatches();
@@ -109,7 +114,6 @@ function logout() {
   location.reload();
 }
 
-// Profile Modal Logic
 async function openProfileModal() {
   try {
     const res = await fetch('/api/match/me', {
@@ -158,13 +162,14 @@ async function saveProfileChanges() {
   }
 }
 
-// Match Deck Logic
 async function fetchMatches() {
   try {
     const res = await fetch('/api/match/discover', {
       headers: { 'Authorization': `Bearer ${authToken}` }
     });
-    matchDeck = await res.json();
+    const data = await res.json();
+    // Exclude self strictly
+    matchDeck = data.filter(u => u.username !== currentHandle);
     currentDeckIndex = 0;
     renderCurrentCard();
   } catch (e) {
@@ -234,6 +239,8 @@ function openMatchedChat() {
 
 function saveDM(username) {
   const clean = username.replace('@', '').trim();
+  if (clean === currentHandle) return; // Prevent self
+
   let dms = JSON.parse(localStorage.getItem('saved_dms') || '[]');
   if (!dms.includes(clean)) {
     dms.push(clean);
@@ -243,7 +250,7 @@ function saveDM(username) {
 }
 
 function loadConversations() {
-  const dms = JSON.parse(localStorage.getItem('saved_dms') || '[]');
+  const dms = JSON.parse(localStorage.getItem('saved_dms') || '[]').filter(u => u !== currentHandle);
   const list = document.getElementById('dmConversationList');
 
   list.innerHTML = `
@@ -258,7 +265,10 @@ function loadConversations() {
 }
 
 async function openChat(target) {
-  activeTarget = target.replace('@', '').trim();
+  const cleanTarget = target.replace('@', '').trim();
+  if (cleanTarget === currentHandle) return; // Prevent self chat
+
+  activeTarget = cleanTarget;
   document.getElementById('activeChatTitle').innerText = activeTarget.startsWith('grp_') ? '🌐 Lounge Squad' : `@${activeTarget}`;
   loadConversations();
 
@@ -287,6 +297,8 @@ function sendDirectMessage() {
   if (!text) return;
 
   const isGroup = activeTarget.startsWith('grp_');
+  if (!isGroup && activeTarget === currentHandle) return;
+
   appendChatMessage(currentHandle, text, true);
 
   socket.emit('send_direct_message', {
@@ -334,22 +346,30 @@ function appendChatMessage(sender, text, isSelf) {
   container.scrollTop = container.scrollHeight;
 }
 
-// Signals Post System
+// Signals Post System - Do not show DM button for self posts
 async function fetchPosts() {
   const res = await fetch('/api/posts');
   const posts = await res.json();
   const feed = document.getElementById('postsFeed');
-  feed.innerHTML = posts.map(p => `
-    <div class="glass-card p-4 rounded-2xl space-y-2">
-      <div class="flex justify-between text-[11px] text-slate-400">
-        <span class="text-indigo-300 font-bold">${p.category}</span>
-        <span>@${p.authorName}</span>
+  feed.innerHTML = posts.map(p => {
+    const isSelfPost = (p.authorName || '').replace('@', '').trim() === currentHandle;
+    return `
+      <div class="glass-card p-4 rounded-2xl space-y-2">
+        <div class="flex justify-between text-[11px] text-slate-400">
+          <span class="text-indigo-300 font-bold">${p.category}</span>
+          <span>@${p.authorName}</span>
+        </div>
+        <h4 class="font-bold text-sm">${p.title}</h4>
+        <p class="text-xs text-slate-400">${p.description}</p>
+        <div class="pt-1">
+          ${isSelfPost 
+            ? `<span class="text-[10px] text-slate-500 font-medium">Your Signal (Broadcasting)</span>` 
+            : `<button onclick="saveDM('${p.authorName}'); openChat('${p.authorName}')" class="text-[11px] bg-indigo-600/30 border border-indigo-500/30 text-indigo-300 px-3 py-1 rounded-xl">Silent DM 👋</button>`
+          }
+        </div>
       </div>
-      <h4 class="font-bold text-sm">${p.title}</h4>
-      <p class="text-xs text-slate-400">${p.description}</p>
-      <button onclick="saveDM('${p.authorName}'); openChat('${p.authorName}')" class="text-[11px] bg-indigo-600/30 border border-indigo-500/30 text-indigo-300 px-3 py-1 rounded-xl">Silent DM 👋</button>
-    </div>
-  `).join('');
+    `;
+  }).join('');
 }
 
 async function submitPost() {
