@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Dashboard — Lounge Control</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    * { font-family: 'Plus Jakarta Sans', sans-serif; }
+    body { background: #07090e; color: #f8fafc; }
+    .glass-card { background: rgba(18, 24, 38, 0.85); backdrop-filter: blur(20px); border: 1px solid rgba(255, 255, 255, 0.08); }
+    .glass-input { background: rgba(11, 15, 25, 0.7); border: 1px solid rgba(255, 255, 255, 0.1); color: #fff; }
+  </style>
+</head>
+<body class="min-h-screen p-4 sm:p-8">
+
+  <div class="max-w-5xl mx-auto space-y-6">
+
+    <!-- Header -->
+    <div class="glass-card p-6 rounded-3xl flex items-center justify-between">
+      <div>
+        <h1 class="text-xl font-extrabold text-white">Lounge Admin Panel</h1>
+        <p class="text-xs text-slate-400">User directory, ban & moderation engine</p>
+      </div>
+      <div id="adminKeyBox" class="flex gap-2">
+        <input id="adminPasskey" type="password" placeholder="Admin Passkey" class="glass-input px-3 py-1.5 rounded-xl text-xs outline-none">
+        <button onclick="loadUsers()" class="bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-1.5 rounded-xl text-xs font-bold transition">Unlock</button>
+      </div>
+    </div>
+
+    <!-- Stats & Directory -->
+    <div id="adminContent" class="hidden space-y-4">
+      <div class="flex justify-between items-center px-1">
+        <span id="userCount" class="text-xs font-bold text-slate-400 uppercase tracking-wider">Total Users: 0</span>
+        <button onclick="loadUsers()" class="text-xs text-indigo-400 hover:underline">Refresh List</button>
+      </div>
+
+      <div class="glass-card rounded-3xl overflow-hidden shadow-2xl border border-white/5">
+        <div class="overflow-x-auto">
+          <table class="w-full text-left text-xs text-slate-300">
+            <thead class="bg-white/5 text-[11px] uppercase tracking-wider text-slate-400 border-b border-white/5">
+              <tr>
+                <th class="p-4">User</th>
+                <th class="p-4">Gmail</th>
+                <th class="p-4">Interest & Location</th>
+                <th class="p-4">Status</th>
+                <th class="p-4 text-right">Moderation Actions</th>
+              </tr>
+            </thead>
+            <tbody id="userTableBody" class="divide-y divide-white/5"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <script>
+    let adminKey = '';
+
+    async function loadUsers() {
+      const keyInput = document.getElementById('adminPasskey').value.trim();
+      if (keyInput) adminKey = keyInput;
+
+      try {
+        const res = await fetch('/api/admin/users', {
+          headers: { 'x-admin-key': adminKey }
+        });
+        const users = await res.json();
+        if (!res.ok) throw new Error(users.msg || 'Access Denied');
+
+        document.getElementById('adminContent').classList.remove('hidden');
+        document.getElementById('userCount').innerText = `Total Registered Users: ${users.length}`;
+
+        const tbody = document.getElementById('userTableBody');
+        tbody.innerHTML = users.map(u => {
+          let statusBadge = '<span class="px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-300 border border-emerald-500/20 text-[10px]">Active</span>';
+          if (u.isBanned) {
+            statusBadge = u.banExpires 
+              ? `<span class="px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-300 border border-amber-500/20 text-[10px]">Temp Ban (${new Date(u.banExpires).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})})</span>`
+              : `<span class="px-2 py-0.5 rounded-full bg-rose-500/10 text-rose-300 border border-rose-500/20 text-[10px]">Permanent Ban</span>`;
+          }
+
+          return `
+            <tr class="hover:bg-white/[0.02] transition">
+              <td class="p-4 font-bold text-white">@${u.username}</td>
+              <td class="p-4 text-slate-400 font-mono text-[11px]">${u.email}</td>
+              <td class="p-4 text-slate-300">${u.interest || 'Gym'} • ${u.location || 'Online'}</td>
+              <td class="p-4">${statusBadge}</td>
+              <td class="p-4 text-right space-x-1.5">
+                ${u.isBanned 
+                  ? `<button onclick="banAction('${u._id}', 'unban')" class="bg-emerald-600/30 text-emerald-300 px-2.5 py-1 rounded-lg text-[10px] font-bold">Unban</button>`
+                  : `
+                    <button onclick="banAction('${u._id}', '1h')" class="bg-amber-600/20 text-amber-300 px-2 py-1 rounded-lg text-[10px]">1h Ban</button>
+                    <button onclick="banAction('${u._id}', '24h')" class="bg-amber-600/20 text-amber-300 px-2 py-1 rounded-lg text-[10px]">24h Ban</button>
+                    <button onclick="banAction('${u._id}', 'perm')" class="bg-rose-600/30 text-rose-300 px-2 py-1 rounded-lg text-[10px] font-bold">Perma-Ban</button>
+                  `
+                }
+                <button onclick="deleteUser('${u._id}')" class="bg-red-600/20 hover:bg-red-600 text-red-300 hover:text-white px-2 py-1 rounded-lg text-[10px] transition">Delete</button>
+              </td>
+            </tr>
+          `;
+        }).join('');
+      } catch (err) {
+        alert(err.message);
+      }
+    }
+
+    async function banAction(userId, banType) {
+      if (!confirm(`Are you sure you want to execute ${banType} on this user?`)) return;
+      try {
+        const res = await fetch('/api/admin/ban', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'x-admin-key': adminKey },
+          body: JSON.stringify({ userId, banType })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.msg);
+        loadUsers();
+      } catch (e) {
+        alert(e.message);
+      }
+    }
+
+    async function deleteUser(userId) {
+      if (!confirm('Permanently delete this user from database?')) return;
+      try {
+        const res = await fetch(`/api/admin/delete/${userId}`, {
+          method: 'DELETE',
+          headers: { 'x-admin-key': adminKey }
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.msg);
+        loadUsers();
+      } catch (e) {
+        alert(e.message);
+      }
+    }
+  </script>
+</body>
+</html>

@@ -5,13 +5,8 @@ const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
 const User = require('../models/User');
 
-// Helper function to validate true Gmail format
-const isValidGmail = (email) => {
-  const gmailRegex = /^[a-zA-Z0-9](\.?[a-zA-Z0-9_-]){5,}@gmail\.com$/;
-  return gmailRegex.test(email);
-};
+const isValidGmail = (email) => /^[a-zA-Z0-9](\.?[a-zA-Z0-9_-]){5,}@gmail\.com$/.test(email);
 
-// Live Username Availability Check
 router.get('/check-username/:username', async (req, res) => {
   try {
     const rawUsername = req.params.username.replace('@', '').trim().toLowerCase();
@@ -22,36 +17,22 @@ router.get('/check-username/:username', async (req, res) => {
   }
 });
 
-// Signup with strict Gmail restriction
 router.post('/signup', async (req, res) => {
   try {
     let { username, email, password, interest, location } = req.body;
-    if (!username || !email || !password) {
-      return res.status(400).json({ msg: 'All fields are required.' });
-    }
+    if (!username || !email || !password) return res.status(400).json({ msg: 'All fields required.' });
 
     username = username.replace('@', '').trim();
     email = email.trim().toLowerCase();
 
-    // Strict Gmail Verification
-    if (!isValidGmail(email)) {
-      return res.status(400).json({ msg: 'Please provide a valid @gmail.com address (e.g. user@gmail.com).' });
-    }
-
-    // Password strength check
-    if (password.length < 6) {
-      return res.status(400).json({ msg: 'Password must be at least 6 characters long.' });
-    }
+    if (!isValidGmail(email)) return res.status(400).json({ msg: 'Provide a valid @gmail.com address.' });
+    if (password.length < 6) return res.status(400).json({ msg: 'Password must be 6+ characters.' });
 
     const userExists = await User.findOne({ username: new RegExp(`^${username}$`, 'i') });
-    if (userExists) {
-      return res.status(400).json({ msg: 'This username is already taken.' });
-    }
+    if (userExists) return res.status(400).json({ msg: 'Username already taken.' });
 
     const emailExists = await User.findOne({ email });
-    if (emailExists) {
-      return res.status(400).json({ msg: 'An account with this Gmail already exists.' });
-    }
+    if (emailExists) return res.status(400).json({ msg: 'Gmail already registered.' });
 
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
@@ -73,20 +54,27 @@ router.post('/signup', async (req, res) => {
   }
 });
 
-// Login
 router.post('/login', async (req, res) => {
   try {
     let { email, password } = req.body;
-    if (!email || !password) return res.status(400).json({ msg: 'All fields are required.' });
+    if (!email || !password) return res.status(400).json({ msg: 'All fields required.' });
 
     email = email.trim().toLowerCase();
-
-    if (!isValidGmail(email)) {
-      return res.status(400).json({ msg: 'Please enter a valid @gmail.com address.' });
-    }
-
     const user = await User.findOne({ email });
     if (!user) return res.status(400).json({ msg: 'Invalid Gmail or password.' });
+
+    // Ban Check
+    if (user.isBanned) {
+      if (!user.banExpires) {
+        return res.status(403).json({ msg: 'Your account is permanently banned for violating community rules.' });
+      } else if (new Date() < new Date(user.banExpires)) {
+        return res.status(403).json({ msg: `Your account is suspended until: ${new Date(user.banExpires).toLocaleString()}` });
+      } else {
+        user.isBanned = false;
+        user.banExpires = null;
+        await user.save();
+      }
+    }
 
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) return res.status(400).json({ msg: 'Invalid Gmail or password.' });
@@ -98,17 +86,12 @@ router.post('/login', async (req, res) => {
   }
 });
 
-// Forgot Password
 router.post('/forgot-password', async (req, res) => {
   try {
     let { email } = req.body;
-    if (!email) return res.status(400).json({ msg: 'Please provide registered Gmail.' });
+    if (!email) return res.status(400).json({ msg: 'Provide registered Gmail.' });
 
     email = email.trim().toLowerCase();
-    if (!isValidGmail(email)) {
-      return res.status(400).json({ msg: 'Must be a valid @gmail.com address.' });
-    }
-
     const user = await User.findOne({ email });
     if (!user) return res.status(404).json({ msg: 'No account found with this Gmail.' });
 
@@ -123,28 +106,20 @@ router.post('/forgot-password', async (req, res) => {
   }
 });
 
-// Reset Password
 router.post('/reset-password', async (req, res) => {
   try {
     let { email, resetToken, newPassword } = req.body;
-    if (!email || !resetToken || !newPassword) {
-      return res.status(400).json({ msg: 'Missing parameters.' });
-    }
+    if (!email || !resetToken || !newPassword) return res.status(400).json({ msg: 'Missing parameters.' });
 
-    email = email.trim().toLowerCase();
-    if (newPassword.length < 6) {
-      return res.status(400).json({ msg: 'Password must be at least 6 characters long.' });
-    }
+    if (newPassword.length < 6) return res.status(400).json({ msg: 'Password must be 6+ characters.' });
 
     const user = await User.findOne({
-      email,
+      email: email.trim().toLowerCase(),
       resetToken,
       resetTokenExpires: { $gt: new Date() }
     });
 
-    if (!user) {
-      return res.status(400).json({ msg: 'Invalid or expired token.' });
-    }
+    if (!user) return res.status(400).json({ msg: 'Invalid or expired token.' });
 
     const salt = await bcrypt.genSalt(10);
     user.password = await bcrypt.hash(newPassword, salt);

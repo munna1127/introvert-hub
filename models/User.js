@@ -8,6 +8,8 @@ const schema = new mongoose.Schema({
   location: { type: String, default: 'Online' },
   battery: { type: String, default: '🔋 Energized' },
   bio: { type: String, default: 'Looking for low-friction quiet connection.' },
+  isBanned: { type: Boolean, default: false },
+  banExpires: { type: Date, default: null },
   resetToken: { type: String, default: null },
   resetTokenExpires: { type: Date, default: null }
 }, { timestamps: true });

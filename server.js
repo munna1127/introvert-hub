@@ -8,6 +8,7 @@ require('dotenv').config();
 const authRoutes = require('./routes/auth');
 const postRoutes = require('./routes/posts');
 const matchRoutes = require('./routes/match');
+const adminRoutes = require('./routes/admin');
 const Message = require('./models/Message');
 
 const app = express();
@@ -22,6 +23,7 @@ app.use(express.static('public'));
 app.use('/api/auth', authRoutes);
 app.use('/api/posts', postRoutes);
 app.use('/api/match', matchRoutes);
+app.use('/api/admin', adminRoutes);
 
 app.get('/health', (req, res) => res.status(200).send('OK'));
 
@@ -35,13 +37,10 @@ if (uri) {
 io.on('connection', (socket) => {
   socket.on('join_user', (rawUser) => {
     if (!rawUser) return;
-    const user = rawUser.replace('@', '').trim();
-    socket.join(user);
+    socket.join(rawUser.replace('@', '').trim());
   });
 
-  socket.on('join_group', (room) => {
-    socket.join(room);
-  });
+  socket.on('join_group', (room) => socket.join(room));
 
   socket.on('send_direct_message', async (data) => {
     try {
