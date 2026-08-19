@@ -10,6 +10,11 @@ let lastMatchedUser = '';
 let checkTimer = null;
 let activeResetToken = null;
 
+function isValidGmail(email) {
+  const re = /^[a-zA-Z0-9](\.?[a-zA-Z0-9_-]){5,}@gmail\.com$/;
+  return re.test(email.toLowerCase());
+}
+
 function switchTab(tab) {
   ['match', 'inbox', 'signals'].forEach(t => {
     document.getElementById(`view${t.charAt(0).toUpperCase() + t.slice(1)}`).classList.add('hidden');
@@ -61,7 +66,6 @@ function checkUsernameLive(val) {
   }, 300);
 }
 
-// Password Recovery Handlers
 function openForgotModal() {
   document.getElementById('forgotModal').classList.remove('hidden');
   document.getElementById('forgotStep1').classList.remove('hidden');
@@ -74,7 +78,9 @@ function closeForgotModal() {
 
 async function requestResetCode() {
   const email = document.getElementById('forgotEmail').value.trim();
-  if (!email) return alert('Please enter your email.');
+  if (!isValidGmail(email)) {
+    return alert('Please enter a valid @gmail.com address.');
+  }
 
   try {
     const res = await fetch('/api/auth/forgot-password', {
@@ -96,7 +102,7 @@ async function requestResetCode() {
 async function submitNewPassword() {
   const email = document.getElementById('forgotEmail').value.trim();
   const newPassword = document.getElementById('newPassword').value.trim();
-  if (!newPassword) return alert('Please enter a new password.');
+  if (newPassword.length < 6) return alert('Password must be at least 6 characters.');
 
   try {
     const res = await fetch('/api/auth/reset-password', {
@@ -121,6 +127,14 @@ async function handleAuth() {
   const username = rawUsername.replace('@', '');
   const interest = document.getElementById('authInterest')?.value || 'Gym';
   const location = document.getElementById('authLocation')?.value.trim() || 'Online';
+
+  if (!isValidGmail(email)) {
+    return alert('Only valid @gmail.com addresses are permitted (e.g. name@gmail.com).');
+  }
+
+  if (password.length < 6) {
+    return alert('Password must be at least 6 characters.');
+  }
 
   const endpoint = isLoginMode ? '/api/auth/login' : '/api/auth/signup';
   const payload = isLoginMode ? { email, password } : { username, email, password, interest, location };
