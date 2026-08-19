@@ -3,15 +3,25 @@ let isLoginMode = false;
 
 let authToken = localStorage.getItem('token');
 let currentHandle = localStorage.getItem('username');
-let userBattery = localStorage.getItem('battery') || '🔋 Energized';
+let userBattery = localStorage.getItem('battery') || '🔋 Full Battery';
+let currentTheme = localStorage.getItem('theme') || 'nebula';
 
 const icebreakers = [
   "What is your go-to comfort music right now?",
   "Gym workout focus today: Push, Pull, or Legs?",
   "Favorite coding stack or current side project?",
   "Coffee or green tea for late night focus?",
-  "What is the best book/movie you experienced recently?"
+  "What is the best movie/anime you experienced recently?"
 ];
+
+function switchTheme(theme) {
+  document.documentElement.setAttribute('data-theme', theme);
+  localStorage.setItem('theme', theme);
+  currentTheme = theme;
+  document.getElementById('themeSelector').value = theme;
+}
+
+switchTheme(currentTheme);
 
 socket.emit('join_room', 'lounge_stream');
 
@@ -24,8 +34,8 @@ function toggleAuthMode() {
   document.getElementById('signupFields').style.display = isLoginMode ? 'none' : 'block';
   document.getElementById('authSubmitBtn').innerText = isLoginMode ? 'Sign In' : 'Enter Lounge';
   document.getElementById('authToggleText').innerHTML = isLoginMode
-    ? 'Need a quiet handle? <b class="text-indigo-400">Join here</b>'
-    : 'Already a member? <b class="text-indigo-400">Log In</b>';
+    ? 'Need a quiet handle? <b class="underline">Join here</b>'
+    : 'Already a member? <b class="underline">Log In</b>';
 }
 
 async function handleAuth() {
@@ -85,23 +95,23 @@ async function fetchPosts() {
     const container = document.getElementById('postsFeed');
 
     if (!posts.length) {
-      container.innerHTML = `<div class="glass p-6 text-center text-xs text-slate-500 rounded-2xl">No broadcasts yet. Start a silent wave.</div>`;
+      container.innerHTML = `<div class="theme-card p-6 text-center text-xs theme-text-sub rounded-2xl">No broadcasts yet. Start a silent wave.</div>`;
       return;
     }
 
     container.innerHTML = posts.map(p => `
-      <div class="glass p-4 rounded-2xl hover:border-white/20 transition flex flex-col justify-between gap-3">
+      <div class="theme-card p-4 rounded-2xl flex flex-col justify-between gap-3">
         <div>
           <div class="flex items-center justify-between text-[11px] mb-2">
-            <span class="px-2.5 py-0.5 rounded-full bg-slate-800 text-indigo-300 border border-white/5 font-medium">${p.category}</span>
-            <span class="text-slate-500">@${p.authorName}</span>
+            <span class="px-2.5 py-0.5 rounded-full border theme-border font-medium">${p.category}</span>
+            <span class="theme-text-sub">@${p.authorName}</span>
           </div>
-          <h4 class="font-semibold text-sm text-slate-100">${p.title}</h4>
-          <p class="text-xs text-slate-400 mt-1 leading-relaxed">${p.description}</p>
+          <h4 class="font-semibold text-sm">${p.title}</h4>
+          <p class="text-xs theme-text-sub mt-1 leading-relaxed">${p.description}</p>
         </div>
-        <div class="flex items-center justify-between pt-2 border-t border-white/5 text-xs">
-          <span class="text-[10px] text-slate-500">${new Date(p.createdAt || Date.now()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
-          <button onclick="joinDirectChat('${p.authorName}', '${p.title.replace(/'/g, "\\'")}')" class="bg-indigo-600/20 hover:bg-indigo-600 text-indigo-300 hover:text-white px-3 py-1 rounded-lg transition text-[11px] border border-indigo-500/20">Quiet Sync 👋</button>
+        <div class="flex items-center justify-between pt-2 border-t theme-border text-xs">
+          <span class="text-[10px] theme-text-sub">${new Date(p.createdAt || Date.now()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+          <button onclick="joinDirectChat('${p.authorName}', '${p.title.replace(/'/g, "\\'")}')" class="theme-card hover:bg-white/10 px-3 py-1 rounded-lg transition text-[11px]">Quiet Sync 👋</button>
         </div>
       </div>
     `).join('');
@@ -170,10 +180,10 @@ function appendChatMessage(user, text, battery, isSelf) {
 
   div.innerHTML = `
     <div class="flex items-center gap-1.5 mb-0.5">
-      <span class="text-[10px] text-slate-400 font-medium">${isSelf ? 'You' : '@' + user}</span>
-      <span class="text-[9px] text-slate-500">${battery || ''}</span>
+      <span class="text-[10px] theme-text-sub font-medium">${isSelf ? 'You' : '@' + user}</span>
+      <span class="text-[9px] opacity-70">${battery || ''}</span>
     </div>
-    <div class="px-3.5 py-2 rounded-2xl max-w-[85%] leading-relaxed ${isSelf ? 'bg-indigo-600 text-white rounded-tr-none' : 'glass text-slate-200 rounded-tl-none'}">
+    <div class="px-3.5 py-2 rounded-2xl max-w-[85%] leading-relaxed ${isSelf ? 'theme-btn rounded-tr-none' : 'theme-card rounded-tl-none'}">
       ${text}
     </div>
   `;

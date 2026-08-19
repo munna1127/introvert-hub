@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="nebula">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -8,36 +8,108 @@
   <script src="/socket.io/socket.io.js"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
   <style>
-    body { font-family: 'Plus Jakarta Sans', sans-serif; }
-    .glass { background: rgba(18, 24, 38, 0.75); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.08); }
-    .glass-input { background: rgba(11, 15, 25, 0.6); border: 1px solid rgba(255, 255, 255, 0.1); }
+    /* 1. Nebula Theme (Default) */
+    html[data-theme="nebula"] {
+      --bg-base: #07090e;
+      --bg-card: rgba(18, 24, 38, 0.75);
+      --bg-input: rgba(11, 15, 25, 0.6);
+      --border-color: rgba(255, 255, 255, 0.08);
+      --accent: #6366f1;
+      --accent-hover: #4f46e5;
+      --text-main: #f8fafc;
+      --text-sub: #94a3b8;
+      --bubble-self: #4f46e5;
+      font-family: 'Plus Jakarta Sans', sans-serif;
+    }
+
+    /* 2. Cyberpunk Emerald Theme */
+    html[data-theme="cyberpunk"] {
+      --bg-base: #030a06;
+      --bg-card: rgba(4, 26, 14, 0.7);
+      --bg-input: rgba(2, 18, 9, 0.8);
+      --border-color: rgba(16, 185, 129, 0.25);
+      --accent: #10b981;
+      --accent-hover: #059669;
+      --text-main: #ecfdf5;
+      --text-sub: #6ee7b7;
+      --bubble-self: #059669;
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    /* 3. Cozy Amber Theme */
+    html[data-theme="cozy"] {
+      --bg-base: #140d0b;
+      --bg-card: rgba(36, 22, 17, 0.75);
+      --bg-input: rgba(24, 15, 11, 0.8);
+      --border-color: rgba(245, 158, 11, 0.18);
+      --accent: #f59e0b;
+      --accent-hover: #d97706;
+      --text-main: #fef3c7;
+      --text-sub: #d97706;
+      --bubble-self: #b45309;
+      font-family: 'Plus Jakarta Sans', sans-serif;
+    }
+
+    body {
+      background-color: var(--bg-base);
+      color: var(--text-main);
+      transition: background-color 0.3s ease, color 0.3s ease;
+    }
+    .theme-card {
+      background-color: var(--bg-card);
+      border: 1px solid var(--border-color);
+      backdrop-filter: blur(16px);
+      transition: all 0.3s ease;
+    }
+    .theme-input {
+      background-color: var(--bg-input);
+      border: 1px solid var(--border-color);
+      color: var(--text-main);
+    }
+    .theme-btn {
+      background-color: var(--accent);
+      color: #ffffff;
+      transition: background-color 0.2s ease;
+    }
+    .theme-btn:hover { background-color: var(--accent-hover); }
+    .theme-text-sub { color: var(--text-sub); }
+    .theme-border { border-color: var(--border-color); }
     .custom-scroll::-webkit-scrollbar { width: 4px; }
-    .custom-scroll::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.1); border-radius: 4px; }
+    .custom-scroll::-webkit-scrollbar-thumb { background: var(--border-color); border-radius: 4px; }
   </style>
 </head>
-<body class="bg-[#0b0f19] text-slate-200 min-h-screen antialiased selection:bg-indigo-500 selection:text-white pb-12">
+<body class="min-h-screen antialiased selection:bg-indigo-500 selection:text-white pb-12">
 
   <!-- Header -->
-  <header class="sticky top-0 z-50 glass border-b border-white/5 px-6 py-3.5">
+  <header class="sticky top-0 z-50 theme-card border-b px-6 py-3.5">
     <div class="max-w-5xl mx-auto flex justify-between items-center">
       <div class="flex items-center gap-3">
-        <div class="w-8 h-8 rounded-lg bg-gradient-to-tr from-indigo-600 to-violet-400 flex items-center justify-center font-bold text-white shadow-lg shadow-indigo-500/20">L</div>
+        <div class="w-8 h-8 rounded-lg theme-btn flex items-center justify-center font-bold text-sm shadow-lg">L</div>
         <div>
-          <h1 class="font-bold text-sm tracking-tight text-white">Lounge</h1>
-          <p class="text-[10px] text-slate-400">Social comfort zone</p>
+          <h1 class="font-bold text-sm tracking-tight">Lounge</h1>
+          <p class="text-[10px] theme-text-sub">Zero pressure social space</p>
         </div>
       </div>
-      <div id="navUser" class="hidden items-center gap-3">
-        <!-- Battery Selector -->
-        <select id="batteryStatus" onchange="updateBattery()" class="glass-input text-[11px] py-1 px-2.5 rounded-full text-indigo-300 outline-none cursor-pointer">
-          <option value="🔋 Full Battery">🔋 Energized</option>
-          <option value="⚡ Low Battery (Silent)">⚡ Low / Lurking</option>
-          <option value="🔕 Study Only">🔕 Study Only</option>
+
+      <!-- Theme Switcher & User Status -->
+      <div class="flex items-center gap-2 sm:gap-4">
+        <select id="themeSelector" onchange="switchTheme(this.value)" class="theme-input text-[11px] py-1 px-2.5 rounded-full outline-none cursor-pointer">
+          <option value="nebula">🌌 Nebula</option>
+          <option value="cyberpunk">⚡ Emerald</option>
+          <option value="cozy">☕ Amber</option>
         </select>
-        <span id="userBadge" class="text-xs px-2.5 py-1 rounded-full bg-indigo-500/10 text-indigo-300 border border-indigo-500/20 font-medium"></span>
-        <button onclick="logout()" class="text-xs text-slate-400 hover:text-rose-400 transition-colors">Exit</button>
+
+        <div id="navUser" class="hidden items-center gap-3">
+          <select id="batteryStatus" onchange="updateBattery()" class="theme-input text-[11px] py-1 px-2.5 rounded-full outline-none cursor-pointer">
+            <option value="🔋 Full Battery">🔋 Energized</option>
+            <option value="⚡ Low Battery (Silent)">⚡ Low / Lurking</option>
+            <option value="🔕 Study Only">🔕 Study Only</option>
+          </select>
+          <span id="userBadge" class="text-xs px-2.5 py-1 rounded-full theme-card font-medium"></span>
+          <button onclick="logout()" class="text-xs theme-text-sub hover:text-rose-400 transition-colors">Exit</button>
+        </div>
       </div>
     </div>
   </header>
@@ -45,23 +117,23 @@
   <main class="max-w-5xl mx-auto px-4 mt-6">
 
     <!-- Auth Card -->
-    <div id="authSection" class="max-w-md mx-auto glass p-8 rounded-2xl shadow-2xl shadow-black/40">
+    <div id="authSection" class="max-w-md mx-auto theme-card p-8 rounded-2xl shadow-2xl">
       <div class="text-center mb-6">
-        <h2 class="text-xl font-bold text-white tracking-tight">Step Inside</h2>
-        <p class="text-xs text-slate-400 mt-1">Zero awkward small talk. Real anonymous vibes.</p>
+        <h2 class="text-xl font-bold tracking-tight">Step Inside</h2>
+        <p class="text-xs theme-text-sub mt-1">Zero pressure. Anonymous handles.</p>
       </div>
 
       <div class="space-y-3">
         <div id="signupFields">
-          <input id="authUsername" type="text" placeholder="Anonymous alias (@midnight_runner)" class="w-full glass-input px-4 py-3 rounded-xl text-sm outline-none focus:border-indigo-500/50 transition">
+          <input id="authUsername" type="text" placeholder="Anonymous alias (@midnight_runner)" class="w-full theme-input px-4 py-3 rounded-xl text-sm outline-none transition">
         </div>
-        <input id="authEmail" type="email" placeholder="Email" class="w-full glass-input px-4 py-3 rounded-xl text-sm outline-none focus:border-indigo-500/50 transition">
-        <input id="authPass" type="password" placeholder="Password" class="w-full glass-input px-4 py-3 rounded-xl text-sm outline-none focus:border-indigo-500/50 transition">
+        <input id="authEmail" type="email" placeholder="Email" class="w-full theme-input px-4 py-3 rounded-xl text-sm outline-none transition">
+        <input id="authPass" type="password" placeholder="Password" class="w-full theme-input px-4 py-3 rounded-xl text-sm outline-none transition">
         
-        <button id="authSubmitBtn" onclick="handleAuth()" class="w-full bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white font-semibold py-3 rounded-xl text-sm shadow-lg shadow-indigo-600/25 transition">Enter Lounge</button>
+        <button id="authSubmitBtn" onclick="handleAuth()" class="w-full theme-btn font-semibold py-3 rounded-xl text-sm shadow-lg transition">Enter Lounge</button>
 
-        <p class="text-center text-xs text-slate-400 pt-3 cursor-pointer select-none" onclick="toggleAuthMode()">
-          <span id="authToggleText">Already a member? <b class="text-indigo-400">Log In</b></span>
+        <p class="text-center text-xs theme-text-sub pt-3 cursor-pointer select-none" onclick="toggleAuthMode()">
+          <span id="authToggleText">Already a member? <b class="underline">Log In</b></span>
         </p>
       </div>
     </div>
@@ -69,74 +141,71 @@
     <!-- Main Workspace -->
     <div id="appSection" class="hidden grid grid-cols-1 lg:grid-cols-3 gap-6">
 
-      <!-- Left Column: Activity Hub & Creation -->
+      <!-- Left Column: Activity Feed & Creation -->
       <div class="lg:col-span-2 space-y-6">
-        <!-- New Activity Box -->
-        <div class="glass p-5 rounded-2xl">
-          <h3 class="text-sm font-semibold text-white mb-3">Host or Join Quiet Plan</h3>
+        <div class="theme-card p-5 rounded-2xl">
+          <h3 class="text-sm font-semibold mb-3">Host or Join Quiet Plan</h3>
           <div class="space-y-3">
             <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
               <label class="cursor-pointer">
                 <input type="radio" name="cat" value="Gym Buddy" class="peer hidden" checked>
-                <div class="text-xs text-center py-2 px-3 rounded-xl border border-white/5 peer-checked:border-indigo-500/50 peer-checked:bg-indigo-500/10 peer-checked:text-indigo-300 text-slate-400 transition">Gym Buddy</div>
+                <div class="text-xs text-center py-2 px-3 rounded-xl border theme-border peer-checked:bg-white/10 theme-text-sub transition">Gym Buddy</div>
               </label>
               <label class="cursor-pointer">
                 <input type="radio" name="cat" value="Study/Coding" class="peer hidden">
-                <div class="text-xs text-center py-2 px-3 rounded-xl border border-white/5 peer-checked:border-indigo-500/50 peer-checked:bg-indigo-500/10 peer-checked:text-indigo-300 text-slate-400 transition">Study / Code</div>
+                <div class="text-xs text-center py-2 px-3 rounded-xl border theme-border peer-checked:bg-white/10 theme-text-sub transition">Study / Code</div>
               </label>
               <label class="cursor-pointer">
                 <input type="radio" name="cat" value="Casual Talk" class="peer hidden">
-                <div class="text-xs text-center py-2 px-3 rounded-xl border border-white/5 peer-checked:border-indigo-500/50 peer-checked:bg-indigo-500/10 peer-checked:text-indigo-300 text-slate-400 transition">Casual Talk</div>
+                <div class="text-xs text-center py-2 px-3 rounded-xl border theme-border peer-checked:bg-white/10 theme-text-sub transition">Casual Talk</div>
               </label>
               <label class="cursor-pointer">
                 <input type="radio" name="cat" value="Gaming" class="peer hidden">
-                <div class="text-xs text-center py-2 px-3 rounded-xl border border-white/5 peer-checked:border-indigo-500/50 peer-checked:bg-indigo-500/10 peer-checked:text-indigo-300 text-slate-400 transition">Gaming</div>
+                <div class="text-xs text-center py-2 px-3 rounded-xl border theme-border peer-checked:bg-white/10 theme-text-sub transition">Gaming</div>
               </label>
             </div>
 
-            <input id="postTitle" placeholder="Title (e.g., 7 AM silent gym buddy, no talk needed)" class="w-full glass-input px-4 py-2.5 rounded-xl text-sm outline-none focus:border-indigo-500/50">
-            <textarea id="postDesc" rows="2" placeholder="Details or quiet boundary notes..." class="w-full glass-input px-4 py-2.5 rounded-xl text-sm outline-none focus:border-indigo-500/50 resize-none"></textarea>
+            <input id="postTitle" placeholder="Title (e.g., 7 AM silent gym buddy, zero small talk)" class="w-full theme-input px-4 py-2.5 rounded-xl text-sm outline-none">
+            <textarea id="postDesc" rows="2" placeholder="Details or quiet boundary notes..." class="w-full theme-input px-4 py-2.5 rounded-xl text-sm outline-none resize-none"></textarea>
 
             <div class="flex justify-end">
-              <button onclick="submitPost()" class="bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold px-5 py-2.5 rounded-xl transition shadow-md shadow-indigo-600/20">Broadcast</button>
+              <button onclick="submitPost()" class="theme-btn text-xs font-semibold px-5 py-2.5 rounded-xl transition shadow-md">Broadcast</button>
             </div>
           </div>
         </div>
 
-        <!-- Feed List -->
         <div class="space-y-3">
           <div class="flex items-center justify-between px-1">
-            <h3 class="text-xs font-bold uppercase tracking-wider text-slate-400">Available Quiet Syncs</h3>
-            <button onclick="fetchPosts()" class="text-xs text-indigo-400 hover:text-indigo-300">Refresh</button>
+            <h3 class="text-xs font-bold uppercase tracking-wider theme-text-sub">Available Quiet Syncs</h3>
+            <button onclick="fetchPosts()" class="text-xs theme-text-sub hover:underline">Refresh</button>
           </div>
           <div id="postsFeed" class="space-y-3"></div>
         </div>
       </div>
 
-      <!-- Right Column: Lounge Chat + Icebreakers -->
+      <!-- Right Column: Lounge Chat -->
       <div class="space-y-6">
-        <div class="glass p-5 rounded-2xl flex flex-col h-[560px]">
-          <div class="flex items-center justify-between pb-3 border-b border-white/5">
+        <div class="theme-card p-5 rounded-2xl flex flex-col h-[560px]">
+          <div class="flex items-center justify-between pb-3 border-b theme-border">
             <div class="flex items-center gap-2">
               <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-              <h3 class="text-sm font-semibold text-white">Quiet Room</h3>
+              <h3 class="text-sm font-semibold">Quiet Lounge</h3>
             </div>
-            <span class="text-[10px] text-slate-500 font-mono">Live</span>
+            <span class="text-[10px] theme-text-sub font-mono">Live</span>
           </div>
 
           <div id="chatMessages" class="flex-1 overflow-y-auto custom-scroll py-3 space-y-3 text-xs"></div>
 
-          <!-- Smart Prompt Box -->
           <div class="pt-2">
-            <button onclick="insertIcebreaker()" class="w-full text-left text-[11px] text-indigo-300 bg-indigo-500/10 hover:bg-indigo-500/15 border border-indigo-500/20 px-3 py-1.5 rounded-lg flex items-center justify-between transition">
+            <button onclick="insertIcebreaker()" class="w-full text-left text-[11px] theme-card px-3 py-1.5 rounded-lg flex items-center justify-between transition">
               <span id="promptText">🎲 Pick an icebreaker prompt</span>
-              <span class="text-[9px] text-indigo-400">Tap</span>
+              <span class="text-[9px] theme-text-sub">Tap</span>
             </button>
           </div>
 
-          <div class="pt-2 border-t border-white/5 flex gap-2">
-            <input id="chatInput" onkeydown="if(event.key==='Enter') sendChatMessage()" placeholder="Type softly..." class="flex-1 glass-input px-3 py-2 rounded-xl text-xs outline-none focus:border-indigo-500/50">
-            <button onclick="sendChatMessage()" class="bg-indigo-600 hover:bg-indigo-500 text-white px-3 py-2 rounded-xl transition text-xs font-medium">Send</button>
+          <div class="pt-2 border-t theme-border flex gap-2">
+            <input id="chatInput" onkeydown="if(event.key==='Enter') sendChatMessage()" placeholder="Type softly..." class="flex-1 theme-input px-3 py-2 rounded-xl text-xs outline-none">
+            <button onclick="sendChatMessage()" class="theme-btn px-3 py-2 rounded-xl transition text-xs font-medium">Send</button>
           </div>
         </div>
       </div>
