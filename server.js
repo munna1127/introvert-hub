@@ -64,6 +64,15 @@ io.on('connection', (socket) => {
       console.error(e);
     }
   });
+
+  socket.on('delete_message_event', (data) => {
+    const { messageId, recipient, isGroup } = data;
+    if (isGroup) {
+      io.to(recipient).emit('message_deleted', { messageId });
+    } else {
+      io.to(recipient).emit('message_deleted', { messageId });
+    }
+  });
 });
 
 const PORT = process.env.PORT || 3000;

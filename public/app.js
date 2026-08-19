@@ -70,7 +70,6 @@ function checkUsernameLive(val) {
   }, 300);
 }
 
-// Password Recovery Handlers
 function openForgotModal() {
   document.getElementById('forgotModal').classList.remove('hidden');
   document.getElementById('forgotStep1').classList.remove('hidden');
@@ -316,6 +315,18 @@ function saveDM(username) {
   loadConversations();
 }
 
+function removeDMFromList(username, e) {
+  if (e) e.stopPropagation();
+  let dms = JSON.parse(localStorage.getItem('saved_dms') || '[]');
+  dms = dms.filter(u => u !== username);
+  localStorage.setItem('saved_dms', JSON.stringify(dms));
+  if (activeTarget === username) {
+    openChat('grp_general');
+  } else {
+    loadConversations();
+  }
+}
+
 function startDirectDM(username) {
   const clean = username.replace('@', '').trim();
   if (!clean || clean === currentHandle) return;
@@ -334,9 +345,10 @@ function loadConversations() {
       🌐 Lounge Squad
     </button>
   ` + dms.map(u => `
-    <button onclick="openChat('${u}')" class="px-3 py-1.5 rounded-xl text-xs whitespace-nowrap ${activeTarget === u ? 'bg-indigo-600 text-white' : 'glass-card text-slate-300'}">
-      @${u}
-    </button>
+    <div class="flex items-center gap-1 glass-card px-2.5 py-1 rounded-xl whitespace-nowrap ${activeTarget === u ? 'border border-indigo-500 text-indigo-300' : 'text-slate-300'}">
+      <button onclick="openChat('${u}')" class="text-xs font-medium">@${u}</button>
+      <button onclick="removeDMFromList('${u}', event)" class="text-[10px] text-slate-500 hover:text-rose-400 ml-1">✕</button>
+    </div>
   `).join('');
 }
 
@@ -345,7 +357,16 @@ async function openChat(target) {
   if (cleanTarget === currentHandle) return;
 
   activeTarget = cleanTarget;
-  document.getElementById('activeChatTitle').innerText = activeTarget.startsWith('grp_') ? '🌐 Lounge Squad' : `@${activeTarget}`;
+  const isGroup = activeTarget.startsWith('grp_');
+  document.getElementById('activeChatTitle').innerText = isGroup ? '🌐 Lounge Squad' : `@${activeTarget}`;
+  
+  // Show / Hide Clear Chat button (Only on 1-on-1 DMs)
+  const clearBtn = document.getElementById('clearChatBtn');
+  if (clearBtn) {
+    if (isGroup) clearBtn.classList.add('hidden');
+    else clearBtn.classList.remove('hidden');
+  }
+
   loadConversations();
 
   const box = document.getElementById('chatMessages');
@@ -360,12 +381,56 @@ async function openChat(target) {
     if (msgs.length === 0) {
       box.innerHTML = '<div class="text-[10px] text-slate-500 text-center py-4">No messages yet. Send a quiet wave 👋</div>';
     } else {
-      msgs.forEach(m => appendChatMessage(m.sender, m.text, m.sender === currentHandle));
+      msgs.forEach(m => appendChatMessage(m.sender, m.text, m.sender === currentHandle, m._id));
     }
   } catch (e) {
     box.innerHTML = '<div class="text-[10px] text-rose-400 text-center py-2">Failed to load messages</div>';
   }
 }
+
+async function clearCurrentConversation() {
+  if (activeTarget.startsWith('grp_')) return;
+  if (!confirm(`Clear all messages with @${activeTarget}?`)) return;
+
+  try {
+    const res = await fetch(`/api/match/clear-chat/${activeTarget}`, {
+      method: 'DELETE',
+      headers: { 'Authorization': `Bearer ${authToken}` }
+    });
+    if (res.ok) {
+      openChat(activeTarget);
+    }
+  } catch (e) {
+    alert('Failed to clear conversation');
+  }
+}
+
+async function deleteSingleMessage(messageId) {
+  if (!confirm('Unsend / delete this message?')) return;
+
+  try {
+    const res = await fetch(`/api/match/message/${messageId}`, {
+      method: 'DELETE',
+      headers: { 'Authorization': `Bearer ${authToken}` }
+    });
+    if (res.ok) {
+      const el = document.getElementById(`msg-${messageId}`);
+      if (el) el.remove();
+      socket.emit('delete_message_event', {
+        messageId,
+        recipient: activeTarget,
+        isGroup: activeTarget.startsWith('grp_')
+      });
+    }
+  } catch (e) {
+    alert('Delete message failed');
+  }
+}
+
+socket.on('message_deleted', (data) => {
+  const el = document.getElementById(`msg-${data.messageId}`);
+  if (el) el.remove();
+});
 
 function sendDirectMessage() {
   const input = document.getElementById('chatInput');
@@ -374,8 +439,6 @@ function sendDirectMessage() {
 
   const isGroup = activeTarget.startsWith('grp_');
   if (!isGroup && activeTarget === currentHandle) return;
-
-  appendChatMessage(currentHandle, text, true);
 
   socket.emit('send_direct_message', {
     sender: currentHandle,
@@ -392,28 +455,35 @@ socket.on('receive_direct_message', (msg) => {
   const cleanRecipient = msg.recipient.replace('@', '').trim();
   const isGroup = activeTarget.startsWith('grp_');
 
-  if (cleanSender === currentHandle && !isGroup) return;
-
   if (isGroup && cleanRecipient === activeTarget) {
-    if (cleanSender !== currentHandle) appendChatMessage(cleanSender, msg.text, false);
+    appendChatMessage(cleanSender, msg.text, cleanSender === currentHandle, msg._id);
   } else if (!isGroup) {
-    if (cleanSender === activeTarget && cleanRecipient === currentHandle) {
-      appendChatMessage(cleanSender, msg.text, false);
+    if ((cleanSender === activeTarget && cleanRecipient === currentHandle) ||
+        (cleanSender === currentHandle && cleanRecipient === activeTarget)) {
+      appendChatMessage(cleanSender, msg.text, cleanSender === currentHandle, msg._id);
     }
   }
 });
 
-function appendChatMessage(sender, text, isSelf) {
+function appendChatMessage(sender, text, isSelf, msgId) {
   const container = document.getElementById('chatMessages');
   if (container.innerText.includes('No messages yet') || container.innerText.includes('Loading')) {
     container.innerHTML = '';
   }
 
   const div = document.createElement('div');
-  div.className = `flex flex-col ${isSelf ? 'items-end' : 'items-start'}`;
+  div.id = msgId ? `msg-${msgId}` : `msg-${Date.now()}`;
+  div.className = `flex flex-col ${isSelf ? 'items-end' : 'items-start'} group`;
+
+  const deleteBtn = (isSelf && msgId) 
+    ? `<button onclick="deleteSingleMessage('${msgId}')" class="opacity-0 group-hover:opacity-100 text-[9px] text-rose-400 hover:underline transition ml-1.5">Unsend</button>` 
+    : '';
 
   div.innerHTML = `
-    <span class="text-[9px] text-slate-500 mb-0.5">${isSelf ? 'You' : '@' + sender}</span>
+    <div class="flex items-center gap-1 mb-0.5">
+      <span class="text-[9px] text-slate-500">${isSelf ? 'You' : '@' + sender}</span>
+      ${deleteBtn}
+    </div>
     <div class="px-3.5 py-2 rounded-2xl max-w-[80%] text-xs leading-relaxed ${isSelf ? 'bg-indigo-600 text-white rounded-tr-none' : 'glass-card text-slate-200 rounded-tl-none'}">
       ${text}
     </div>

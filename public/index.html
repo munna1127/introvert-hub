@@ -106,7 +106,11 @@
               <h4 id="activeChatTitle" class="text-xs font-bold text-indigo-300">Select a Chat</h4>
               <p id="activeChatSub" class="text-[10px] text-slate-400">Silent Sync active</p>
             </div>
-            <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+            
+            <div class="flex items-center gap-2">
+              <button id="clearChatBtn" onclick="clearCurrentConversation()" class="hidden text-[10px] bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/20 px-2 py-1 rounded-lg transition">Clear Chat</button>
+              <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+            </div>
           </div>
 
           <div id="chatMessages" class="flex-1 overflow-y-auto custom-scroll py-3 space-y-2 text-xs"></div>
@@ -187,14 +191,12 @@
           <button onclick="closeForgotModal()" class="text-slate-400 text-xs">✕</button>
         </div>
 
-        <!-- Step 1: Request Code -->
         <div id="forgotStep1" class="space-y-2">
           <p class="text-[11px] text-slate-400">Enter your registered email to verify account.</p>
           <input id="forgotEmail" type="email" placeholder="Registered email" class="w-full glass-input px-3 py-2 rounded-xl text-xs outline-none">
           <button onclick="requestResetCode()" class="w-full bg-indigo-600 py-2 rounded-xl text-xs font-bold mt-2">Verify Account</button>
         </div>
 
-        <!-- Step 2: Enter New Password -->
         <div id="forgotStep2" class="space-y-2 hidden">
           <p class="text-[11px] text-emerald-400">Account verified! Set your new password.</p>
           <input id="newPassword" type="password" placeholder="New strong password" class="w-full glass-input px-3 py-2 rounded-xl text-xs outline-none">
