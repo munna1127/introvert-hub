@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Introvert Hub</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="/socket.io/socket.io.js"></script>
+</head>
+<body class="bg-slate-900 text-slate-100 min-h-screen font-sans">
+  <div class="max-w-md mx-auto p-4 space-y-4">
+    <header class="text-center py-2 border-b border-slate-700">
+      <h1 class="text-2xl font-bold text-indigo-400">Introvert Hub</h1>
+      <p class="text-xs text-slate-400">Connect silently, zero pressure</p>
+    </header>
+
+    <!-- Auth Section -->
+    <div id="authBox" class="bg-slate-800 p-4 rounded-xl space-y-3">
+      <h2 class="text-lg font-semibold text-center">Login / Quick Join</h2>
+      <input id="authUsername" type="text" placeholder="Anonymous Username" class="w-full p-2 bg-slate-700 rounded border border-slate-600 outline-none text-sm">
+      <input id="authEmail" type="email" placeholder="Email" class="w-full p-2 bg-slate-700 rounded border border-slate-600 outline-none text-sm">
+      <input id="authPass" type="password" placeholder="Password" class="w-full p-2 bg-slate-700 rounded border border-slate-600 outline-none text-sm">
+      <div class="flex gap-2">
+        <button onclick="register()" class="w-1/2 bg-slate-700 hover:bg-slate-600 py-2 rounded text-sm font-semibold">Signup</button>
+        <button onclick="login()" class="w-1/2 bg-indigo-600 hover:bg-indigo-500 py-2 rounded text-sm font-semibold">Login</button>
+      </div>
+    </div>
+
+    <!-- App Main Dashboard (Hidden by default) -->
+    <div id="mainDashboard" class="hidden space-y-4">
+      <div class="flex justify-between items-center bg-slate-800 p-3 rounded-lg">
+        <span id="userBadge" class="text-sm font-bold text-indigo-400"></span>
+        <button onclick="logout()" class="text-xs bg-red-600 px-2 py-1 rounded">Logout</button>
+      </div>
+
+      <!-- Create Post Form -->
+      <div class="bg-slate-800 p-4 rounded-xl space-y-2">
+        <h3 class="text-sm font-bold text-slate-300">Find Partner / Buddy</h3>
+        <select id="category" class="w-full p-2 bg-slate-700 rounded text-sm border border-slate-600">
+          <option value="Gym Buddy">Gym Buddy</option>
+          <option value="Study/Coding">Study/Coding</option>
+          <option value="Gaming">Gaming</option>
+          <option value="Casual Talk">Casual Talk</option>
+        </select>
+        <input id="postTitle" placeholder="Short Title (e.g., Evening Gym partner)" class="w-full p-2 bg-slate-700 rounded text-sm outline-none border border-slate-600">
+        <input id="postDesc" placeholder="Details / Silent preference" class="w-full p-2 bg-slate-700 rounded text-sm outline-none border border-slate-600">
+        <button onclick="createPost()" class="w-full bg-indigo-600 hover:bg-indigo-500 py-2 rounded text-sm font-bold">Post Activity</button>
+      </div>
+
+      <!-- Live Posts Feed -->
+      <div id="postsList" class="space-y-3"></div>
+
+      <!-- Live Chat Room -->
+      <div class="bg-slate-800 p-4 rounded-xl space-y-2">
+        <h3 class="text-sm font-bold text-slate-300">Quiet Lounge (Live Chat)</h3>
+        <div id="chatBox" class="h-40 overflow-y-auto bg-slate-900 p-2 rounded text-xs space-y-1 border border-slate-700"></div>
+        <div class="flex gap-2">
+          <input id="chatInput" placeholder="Send a message..." class="flex-1 p-2 bg-slate-700 rounded text-sm outline-none border border-slate-600">
+          <button onclick="sendMessage()" class="bg-indigo-600 px-4 py-2 rounded text-sm font-bold">Send</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
