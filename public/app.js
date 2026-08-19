@@ -10,6 +10,19 @@ let lastMatchedUser = '';
 let checkTimer = null;
 let activeResetToken = null;
 
+// WebRTC State
+let localStream = null;
+let peerConnection = null;
+let incomingSignalData = null;
+let callerUser = null;
+
+const rtcConfig = {
+  iceServers: [
+    { urls: 'stun:stun.l.google.com:19302' },
+    { urls: 'stun:stun1.l.google.com:19302' }
+  ]
+};
+
 function isValidGmail(email) {
   return /^[a-zA-Z0-9](\.?[a-zA-Z0-9_-]){5,}@gmail\.com$/.test(email.toLowerCase());
 }
@@ -360,11 +373,16 @@ async function openChat(target) {
   const isGroup = activeTarget.startsWith('grp_');
   document.getElementById('activeChatTitle').innerText = isGroup ? '🌐 Lounge Squad' : `@${activeTarget}`;
   
-  // Show / Hide Clear Chat button (Only on 1-on-1 DMs)
   const clearBtn = document.getElementById('clearChatBtn');
-  if (clearBtn) {
-    if (isGroup) clearBtn.classList.add('hidden');
-    else clearBtn.classList.remove('hidden');
+  const callBtn = document.getElementById('callBtn');
+  if (clearBtn && callBtn) {
+    if (isGroup) {
+      clearBtn.classList.add('hidden');
+      callBtn.classList.add('hidden');
+    } else {
+      clearBtn.classList.remove('hidden');
+      callBtn.classList.remove('hidden');
+    }
   }
 
   loadConversations();
@@ -397,9 +415,7 @@ async function clearCurrentConversation() {
       method: 'DELETE',
       headers: { 'Authorization': `Bearer ${authToken}` }
     });
-    if (res.ok) {
-      openChat(activeTarget);
-    }
+    if (res.ok) openChat(activeTarget);
   } catch (e) {
     alert('Failed to clear conversation');
   }
@@ -490,6 +506,140 @@ function appendChatMessage(sender, text, isSelf, msgId) {
   `;
   container.appendChild(div);
   container.scrollTop = container.scrollHeight;
+}
+
+// --- WebRTC Peer-to-Peer Voice Engine ---
+async function initiateVoiceCall() {
+  if (activeTarget.startsWith('grp_')) return;
+
+  try {
+    localStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+    peerConnection = new RTCPeerConnection(rtcConfig);
+
+    localStream.getTracks().forEach(track => peerConnection.addTrack(track, localStream));
+
+    peerConnection.ontrack = (event) => {
+      document.getElementById('remoteAudio').srcObject = event.streams[0];
+    };
+
+    peerConnection.onicecandidate = (event) => {
+      if (event.candidate) {
+        socket.emit('call_user', {
+          userToCall: activeTarget,
+          signalData: { candidate: event.candidate },
+          from: currentHandle
+        });
+      }
+    };
+
+    const offer = await peerConnection.createOffer();
+    await peerConnection.setLocalDescription(offer);
+
+    socket.emit('call_user', {
+      userToCall: activeTarget,
+      signalData: { sdp: offer },
+      from: currentHandle
+    });
+
+    document.getElementById('callPeerHandle').innerText = `@${activeTarget}`;
+    document.getElementById('callStatusText').innerText = 'Calling quietly...';
+    document.getElementById('acceptCallBtn').classList.add('hidden');
+    document.getElementById('callModal').classList.remove('hidden');
+  } catch (err) {
+    alert('Microphone access required for voice sync.');
+  }
+}
+
+socket.on('incoming_call', async (data) => {
+  if (data.signal.sdp) {
+    callerUser = data.from;
+    incomingSignalData = data.signal.sdp;
+
+    document.getElementById('callPeerHandle').innerText = `@${callerUser}`;
+    document.getElementById('callStatusText').innerText = 'Incoming silent call sync...';
+    document.getElementById('acceptCallBtn').classList.remove('hidden');
+    document.getElementById('callModal').classList.remove('hidden');
+  } else if (data.signal.candidate && peerConnection) {
+    try {
+      await peerConnection.addIceCandidate(new RTCIceCandidate(data.signal.candidate));
+    } catch (e) {
+      console.error(e);
+    }
+  }
+});
+
+async function acceptIncomingCall() {
+  try {
+    localStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+    peerConnection = new RTCPeerConnection(rtcConfig);
+
+    localStream.getTracks().forEach(track => peerConnection.addTrack(track, localStream));
+
+    peerConnection.ontrack = (event) => {
+      document.getElementById('remoteAudio').srcObject = event.streams[0];
+    };
+
+    peerConnection.onicecandidate = (event) => {
+      if (event.candidate) {
+        socket.emit('answer_call', {
+          to: callerUser,
+          signal: { candidate: event.candidate }
+        });
+      }
+    };
+
+    await peerConnection.setRemoteDescription(new RTCSessionDescription(incomingSignalData));
+    const answer = await peerConnection.createAnswer();
+    await peerConnection.setLocalDescription(answer);
+
+    socket.emit('answer_call', {
+      to: callerUser,
+      signal: { sdp: answer }
+    });
+
+    document.getElementById('acceptCallBtn').classList.add('hidden');
+    document.getElementById('callStatusText').innerText = 'Voice connection active 🟢';
+  } catch (err) {
+    alert('Could not access microphone.');
+  }
+}
+
+socket.on('call_accepted', async (signal) => {
+  if (signal.sdp && peerConnection) {
+    await peerConnection.setRemoteDescription(new RTCSessionDescription(signal.sdp));
+    document.getElementById('callStatusText').innerText = 'Voice connection active 🟢';
+  } else if (signal.candidate && peerConnection) {
+    try {
+      await peerConnection.addIceCandidate(new RTCIceCandidate(signal.candidate));
+    } catch (e) {
+      console.error(e);
+    }
+  }
+});
+
+function endVoiceCall() {
+  const target = callerUser || activeTarget;
+  socket.emit('end_call', { to: target });
+  cleanupCallState();
+}
+
+socket.on('call_ended', () => {
+  cleanupCallState();
+});
+
+function cleanupCallState() {
+  if (peerConnection) {
+    peerConnection.close();
+    peerConnection = null;
+  }
+  if (localStream) {
+    localStream.getTracks().forEach(t => t.stop());
+    localStream = null;
+  }
+  document.getElementById('callModal').classList.add('hidden');
+  document.getElementById('remoteAudio').srcObject = null;
+  callerUser = null;
+  incomingSignalData = null;
 }
 
 // Signals Post System

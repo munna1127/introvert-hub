@@ -42,6 +42,7 @@ io.on('connection', (socket) => {
 
   socket.on('join_group', (room) => socket.join(room));
 
+  // Chat Messaging
   socket.on('send_direct_message', async (data) => {
     try {
       const sender = data.sender.replace('@', '').trim();
@@ -67,11 +68,23 @@ io.on('connection', (socket) => {
 
   socket.on('delete_message_event', (data) => {
     const { messageId, recipient, isGroup } = data;
-    if (isGroup) {
-      io.to(recipient).emit('message_deleted', { messageId });
-    } else {
-      io.to(recipient).emit('message_deleted', { messageId });
-    }
+    io.to(recipient).emit('message_deleted', { messageId });
+  });
+
+  // --- WebRTC Voice Call Signaling ---
+  socket.on('call_user', (data) => {
+    io.to(data.userToCall).emit('incoming_call', {
+      signal: data.signalData,
+      from: data.from
+    });
+  });
+
+  socket.on('answer_call', (data) => {
+    io.to(data.to).emit('call_accepted', data.signal);
+  });
+
+  socket.on('end_call', (data) => {
+    io.to(data.to).emit('call_ended');
   });
 });
 
