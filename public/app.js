@@ -7,6 +7,7 @@ let activeTarget = 'grp_general';
 let matchDeck = [];
 let currentDeckIndex = 0;
 let lastMatchedUser = '';
+let checkTimer = null;
 
 function switchTab(tab) {
   ['match', 'inbox', 'signals'].forEach(t => {
@@ -27,6 +28,34 @@ function toggleAuthMode() {
   document.getElementById('authSubmitBtn').innerText = isLoginMode ? 'Sign In' : 'Enter Lounge';
 }
 
+function checkUsernameLive(val) {
+  clearTimeout(checkTimer);
+  const clean = val.replace('@', '').trim();
+  const msg = document.getElementById('usernameCheckMsg');
+
+  if (clean.length < 3) {
+    msg.classList.add('hidden');
+    return;
+  }
+
+  checkTimer = setTimeout(async () => {
+    try {
+      const res = await fetch(`/api/auth/check-username/${clean}`);
+      const data = await res.json();
+      msg.classList.remove('hidden');
+      if (data.available) {
+        msg.className = 'text-[10px] mt-1 block px-2 text-emerald-400';
+        msg.innerText = '✓ Username is available';
+      } else {
+        msg.className = 'text-[10px] mt-1 block px-2 text-rose-400';
+        msg.innerText = '✕ Username is already taken';
+      }
+    } catch (e) {
+      msg.classList.add('hidden');
+    }
+  }, 300);
+}
+
 async function handleAuth() {
   const email = document.getElementById('authEmail').value.trim();
   const password = document.getElementById('authPass').value.trim();
@@ -45,7 +74,7 @@ async function handleAuth() {
       body: JSON.stringify(payload)
     });
     const data = await res.json();
-    if (!res.ok) throw new Error(data.msg || 'Auth Failed');
+    if (!res.ok) throw new Error(data.msg || 'Authentication failed');
 
     const cleanUser = data.username.replace('@', '');
     localStorage.setItem('token', data.token);
@@ -80,7 +109,56 @@ function logout() {
   location.reload();
 }
 
-// Swipe Match Deck
+// Profile Modal Logic
+async function openProfileModal() {
+  try {
+    const res = await fetch('/api/match/me', {
+      headers: { 'Authorization': `Bearer ${authToken}` }
+    });
+    const user = await res.json();
+    document.getElementById('editUsername').value = user.username || '';
+    document.getElementById('editBio').value = user.bio || '';
+    document.getElementById('editInterest').value = user.interest || 'Gym';
+    document.getElementById('editLocation').value = user.location || '';
+    document.getElementById('profileModal').classList.remove('hidden');
+  } catch (e) {
+    alert('Failed to load profile');
+  }
+}
+
+function closeProfileModal() {
+  document.getElementById('profileModal').classList.add('hidden');
+}
+
+async function saveProfileChanges() {
+  const username = document.getElementById('editUsername').value.trim();
+  const bio = document.getElementById('editBio').value.trim();
+  const interest = document.getElementById('editInterest').value;
+  const location = document.getElementById('editLocation').value.trim();
+
+  try {
+    const res = await fetch('/api/match/update-profile', {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${authToken}`
+      },
+      body: JSON.stringify({ username, bio, interest, location })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.msg || 'Update failed');
+
+    currentHandle = data.username.replace('@', '');
+    localStorage.setItem('username', currentHandle);
+    document.getElementById('userBadge').innerText = `@${currentHandle}`;
+    closeProfileModal();
+    alert('Profile updated successfully!');
+  } catch (e) {
+    alert(e.message);
+  }
+}
+
+// Match Deck Logic
 async function fetchMatches() {
   try {
     const res = await fetch('/api/match/discover', {
@@ -179,7 +257,6 @@ function loadConversations() {
   `).join('');
 }
 
-// Chat Engine
 async function openChat(target) {
   activeTarget = target.replace('@', '').trim();
   document.getElementById('activeChatTitle').innerText = activeTarget.startsWith('grp_') ? '🌐 Lounge Squad' : `@${activeTarget}`;
@@ -210,8 +287,6 @@ function sendDirectMessage() {
   if (!text) return;
 
   const isGroup = activeTarget.startsWith('grp_');
-
-  // Optimistic UI Append
   appendChatMessage(currentHandle, text, true);
 
   socket.emit('send_direct_message', {
@@ -229,13 +304,10 @@ socket.on('receive_direct_message', (msg) => {
   const cleanRecipient = msg.recipient.replace('@', '').trim();
   const isGroup = activeTarget.startsWith('grp_');
 
-  // Skip self duplicate because of optimistic UI
   if (cleanSender === currentHandle && !isGroup) return;
 
   if (isGroup && cleanRecipient === activeTarget) {
-    if (cleanSender !== currentHandle) {
-      appendChatMessage(cleanSender, msg.text, false);
-    }
+    if (cleanSender !== currentHandle) appendChatMessage(cleanSender, msg.text, false);
   } else if (!isGroup) {
     if (cleanSender === activeTarget && cleanRecipient === currentHandle) {
       appendChatMessage(cleanSender, msg.text, false);
@@ -245,8 +317,6 @@ socket.on('receive_direct_message', (msg) => {
 
 function appendChatMessage(sender, text, isSelf) {
   const container = document.getElementById('chatMessages');
-  
-  // Remove placeholder if present
   if (container.innerText.includes('No messages yet') || container.innerText.includes('Loading')) {
     container.innerHTML = '';
   }
