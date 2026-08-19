@@ -3,22 +3,23 @@ let isLoginMode = false;
 
 let authToken = localStorage.getItem('token');
 let currentHandle = localStorage.getItem('username');
-let userBattery = localStorage.getItem('battery') || '🔋 Full Battery';
-let currentTheme = localStorage.getItem('theme') || 'nebula';
+let userBattery = localStorage.getItem('battery') || '🔋 Active';
+let currentTheme = localStorage.getItem('theme') || 'midnight';
 
 const icebreakers = [
-  "What is your go-to comfort music right now?",
-  "Gym workout focus today: Push, Pull, or Legs?",
-  "Favorite coding stack or current side project?",
-  "Coffee or green tea for late night focus?",
-  "What is the best movie/anime you experienced recently?"
+  "What's your current hyperfocus or comfort show?",
+  "Gym split today: Push, Pull, or Legs?",
+  "Favorite late night work beverage: Coffee or Matcha?",
+  "Recommend one album with zero skips.",
+  "Which programming language gives you the most peace?"
 ];
 
 function switchTheme(theme) {
   document.documentElement.setAttribute('data-theme', theme);
   localStorage.setItem('theme', theme);
   currentTheme = theme;
-  document.getElementById('themeSelector').value = theme;
+  const selector = document.getElementById('themeSelector');
+  if (selector) selector.value = theme;
 }
 
 switchTheme(currentTheme);
@@ -34,8 +35,8 @@ function toggleAuthMode() {
   document.getElementById('signupFields').style.display = isLoginMode ? 'none' : 'block';
   document.getElementById('authSubmitBtn').innerText = isLoginMode ? 'Sign In' : 'Enter Lounge';
   document.getElementById('authToggleText').innerHTML = isLoginMode
-    ? 'Need a quiet handle? <b class="underline">Join here</b>'
-    : 'Already a member? <b class="underline">Log In</b>';
+    ? 'Need an anonymous handle? <b class="text-indigo-400 hover:underline">Join here</b>'
+    : 'Already a member? <b class="text-indigo-400 hover:underline">Log In</b>';
 }
 
 async function handleAuth() {
@@ -77,7 +78,6 @@ function initView() {
     document.getElementById('appSection').classList.remove('hidden');
     document.getElementById('navUser').classList.remove('hidden');
     document.getElementById('navUser').classList.add('flex');
-    document.getElementById('userBadge').innerText = `@${currentHandle}`;
     document.getElementById('batteryStatus').value = userBattery;
     fetchPosts();
   }
@@ -95,23 +95,23 @@ async function fetchPosts() {
     const container = document.getElementById('postsFeed');
 
     if (!posts.length) {
-      container.innerHTML = `<div class="theme-card p-6 text-center text-xs theme-text-sub rounded-2xl">No broadcasts yet. Start a silent wave.</div>`;
+      container.innerHTML = `<div class="theme-card p-8 text-center text-xs text-slate-400 rounded-3xl">No signals broadcasted yet. Create the first one!</div>`;
       return;
     }
 
     container.innerHTML = posts.map(p => `
-      <div class="theme-card p-4 rounded-2xl flex flex-col justify-between gap-3">
+      <div class="theme-card p-4 sm:p-5 rounded-3xl flex flex-col justify-between gap-3 shadow-lg">
         <div>
           <div class="flex items-center justify-between text-[11px] mb-2">
-            <span class="px-2.5 py-0.5 rounded-full border theme-border font-medium">${p.category}</span>
-            <span class="theme-text-sub">@${p.authorName}</span>
+            <span class="px-3 py-1 rounded-full bg-white/5 border border-white/10 font-medium text-indigo-300">${p.category}</span>
+            <span class="text-slate-400 font-medium">@${p.authorName}</span>
           </div>
-          <h4 class="font-semibold text-sm">${p.title}</h4>
-          <p class="text-xs theme-text-sub mt-1 leading-relaxed">${p.description}</p>
+          <h4 class="font-semibold text-sm leading-snug">${p.title}</h4>
+          <p class="text-xs text-slate-400 mt-1.5 leading-relaxed">${p.description}</p>
         </div>
-        <div class="flex items-center justify-between pt-2 border-t theme-border text-xs">
-          <span class="text-[10px] theme-text-sub">${new Date(p.createdAt || Date.now()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
-          <button onclick="joinDirectChat('${p.authorName}', '${p.title.replace(/'/g, "\\'")}')" class="theme-card hover:bg-white/10 px-3 py-1 rounded-lg transition text-[11px]">Quiet Sync 👋</button>
+        <div class="flex items-center justify-between pt-3 border-t border-white/5 text-xs">
+          <span class="text-[10px] text-slate-500 font-mono">${new Date(p.createdAt || Date.now()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+          <button onclick="joinDirectChat('${p.authorName}', '${p.title.replace(/'/g, "\\'")}')" class="theme-btn px-3 py-1.5 rounded-xl text-[11px] font-semibold active:scale-95 transition shadow-sm">Sync Request 👋</button>
         </div>
       </div>
     `).join('');
@@ -148,14 +148,14 @@ async function submitPost() {
 }
 
 function insertIcebreaker() {
-  const randomPrompt = icebreakers[Math.floor(Math.random() * icebreakers.length)];
-  document.getElementById('chatInput').value = randomPrompt;
-  document.getElementById('promptText').innerText = '🎲 ' + randomPrompt.substring(0, 30) + '...';
+  const prompt = icebreakers[Math.floor(Math.random() * icebreakers.length)];
+  document.getElementById('chatInput').value = prompt;
+  document.getElementById('promptText').innerText = '🎲 ' + prompt.substring(0, 32) + '...';
 }
 
 function joinDirectChat(author, planTitle) {
   const input = document.getElementById('chatInput');
-  input.value = `Hey @${author}, saw your plan "${planTitle}". I am down for a quiet sync!`;
+  input.value = `Hey @${author}, down for "${planTitle}". Silent sync?`;
   input.focus();
 }
 
@@ -179,11 +179,11 @@ function appendChatMessage(user, text, battery, isSelf) {
   div.className = `flex flex-col ${isSelf ? 'items-end' : 'items-start'}`;
 
   div.innerHTML = `
-    <div class="flex items-center gap-1.5 mb-0.5">
-      <span class="text-[10px] theme-text-sub font-medium">${isSelf ? 'You' : '@' + user}</span>
+    <div class="flex items-center gap-1.5 mb-1 px-1">
+      <span class="text-[10px] text-slate-400 font-medium">${isSelf ? 'You' : '@' + user}</span>
       <span class="text-[9px] opacity-70">${battery || ''}</span>
     </div>
-    <div class="px-3.5 py-2 rounded-2xl max-w-[85%] leading-relaxed ${isSelf ? 'theme-btn rounded-tr-none' : 'theme-card rounded-tl-none'}">
+    <div class="px-3.5 py-2.5 rounded-2xl max-w-[85%] leading-relaxed text-xs shadow-md ${isSelf ? 'theme-btn rounded-tr-none' : 'theme-card rounded-tl-none'}">
       ${text}
     </div>
   `;
